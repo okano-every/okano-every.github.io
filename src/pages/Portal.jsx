@@ -1,19 +1,25 @@
 /**
  * 岡野ファミリー Apps ポータル
- * 全アプリへの入口ページ (Plan A: ウェルスナビ風 ミニマルアイコン版)
+ * 全アプリへの入口ページ (Plan A/B: テーマ切り替え＆全画面同期対応版)
  */
+import { useState, useEffect } from "react";
 
-const C = {
-  bg: "#f8fafc",      // 清潔感のあるライトグレー
-  card: "#ffffff",    // 純白のカード
-  line: "#e2e8f0",    // スッキリとした薄い境界線
-  text: "#0f172a",    // ネイビーブラック
-  muted: "#64748b",   // チャコールグレー
-  acc: "#0052cc",     // コーポレートブルー
-  green: "#0284c7",   // シアンブルー
-  amber: "#b45309",   // 視認性の高いアンバー
-  purple: "#7c3aed",  // 深みのあるパープル
-};
+// ================================================================
+// テーマカラー動的定義
+// ================================================================
+const getColors = (isDark) => ({
+  bg: isDark ? "#0a0f1a" : "#f8fafc",      // 背景（深ネイビー / 薄グレー）
+  card: isDark ? "#121c2e" : "#ffffff",    // カード（ダークネイビー / 純白）
+  line: isDark ? "#1e2d45" : "#e2e8f0",    // 境界線
+  text: isDark ? "#e2e8f0" : "#0f172a",    // メイン文字
+  muted: isDark ? "#4a6080" : "#64748b",   // 補助文字
+  acc: "#0052cc",     // コーポレートブルー（共通）
+  green: "#0284c7",   // シアンブルー（共通）
+  amber: isDark ? "#f59e0b" : "#b45309",   // アンバー
+  purple: isDark ? "#a78bfa" : "#7c3aed",  // パープル
+  teal: isDark ? "#2dd4bf" : "#0d9488",    // 純資産用
+  pink: isDark ? "#f472b6" : "#db2777",    // レポート用
+});
 
 // ミニマルなインラインSVGアイコンコンポーネント
 const Icons = {
@@ -62,60 +68,12 @@ const Icons = {
 };
 
 const APPS = [
-  {
-    id:    "dashboard",
-    icon:  "dashboard",
-    name:  "資産ダッシュボード",
-    desc:  "家族全員の資産を一元管理。推移グラフ・目標進捗",
-    path:  "/dashboard",
-    color: C.acc,
-    ready: true,
-  },
-  {
-    id:    "fx",
-    icon:  "fx",
-    name:  "FXトラッカー",
-    desc:  "HFM / Exness / XM 取引履歴・損益・残高推移（2023-06〜）",
-    path:  "/fx",
-    color: C.green,
-    ready: true,
-  },
-  {
-    id:    "crypto",
-    icon:  "crypto",
-    name:  "暗号資産",
-    desc:  "保有コイン・評価額の管理",
-    path:  "/crypto",
-    color: C.amber,
-    ready: false,
-  },
-  {
-    id:    "education",
-    icon:  "education",
-    name:  "教育費カレンダー",
-    desc:  "子供3人の進学タイムライン・費用計画",
-    path:  "/education",
-    color: C.purple,
-    ready: false,
-  },
-  {
-    id:    "networth",
-    icon:  "networth",
-    name:  "純資産サマリー",
-    desc:  "不動産・退職金を含む総資産見通し",
-    path:  "/networth",
-    color: "#0d9488",
-    ready: false,
-  },
-  {
-    id:    "report",
-    icon:  "report",
-    name:  "月次レポート",
-    desc:  "月末自動生成レポート・AI分析",
-    path:  "/report",
-    color: "#db2777",
-    ready: false,
-  },
+  { id: "dashboard", icon: "dashboard", name: "資産ダッシュボード", desc: "家族全員の資産を一元管理。推移グラフ・目標進捗", path: "/dashboard", colorKey: "acc", ready: true },
+  { id: "fx", icon: "fx", name: "FXトラッカー", desc: "HFM / Exness / XM 取引履歴・損益・残高推移（2023-06〜）", path: "/fx", colorKey: "green", ready: true },
+  { id: "crypto", icon: "crypto", name: "暗号資産", desc: "保有コイン・評価額の管理", path: "/crypto", colorKey: "amber", ready: false },
+  { id: "education", icon: "education", name: "教育費カレンダー", desc: "子供3人の進学タイムライン・費用計画", path: "/education", colorKey: "purple", ready: false },
+  { id: "networth", icon: "networth", name: "純資産サマリー", desc: "不動産・退職金を含む総資産見通し", path: "/networth", colorKey: "teal", ready: false },
+  { id: "report", icon: "report", name: "月次レポート", desc: "月末自動生成レポート・AI分析", path: "/report", colorKey: "pink", ready: false },
 ];
 
 function getLastUpdated() {
@@ -130,6 +88,24 @@ function getLastUpdated() {
 }
 
 export default function Portal() {
+  const [theme, setTheme] = useState("light");
+
+  // 初回起動時に保存されたテーマを読み込む
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("okano-app-theme") || "light";
+    setTheme(savedTheme);
+  }, []);
+
+  // テーマ切り替え処理＆保存
+  const toggleTheme = () => {
+    const nextTheme = theme === "light" ? "dark" : "light";
+    setTheme(nextTheme);
+    localStorage.setItem("okano-app-theme", nextTheme);
+  };
+
+  const isDark = theme === "dark";
+  const C = getColors(isDark);
+
   const navigate    = (path) => { window.location.href = path; };
   const lastUpdated = getLastUpdated();
   const now         = new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
@@ -138,7 +114,39 @@ export default function Portal() {
     <div style={{
       background: C.bg, minHeight: "100vh", color: C.text,
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      transition: "background 0.3s, color 0.3s"
     }}>
+
+      {/* ── スマホ画面上部の押し下げ用アクセントバー ＋ 切り替えスイッチ ── */}
+      <div style={{ 
+        background: C.acc, 
+        height: "36px", 
+        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        padding: "0 16px"
+      }}>
+        <button 
+          onClick={toggleTheme}
+          style={{
+            background: "rgba(255, 255, 255, 0.2)",
+            border: "none",
+            borderRadius: "20px",
+            color: "#fff",
+            padding: "4px 12px",
+            fontSize: "11px",
+            fontWeight: "600",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            outline: "none"
+          }}
+        >
+          {isDark ? "☀️ LIGHT" : "🌙 DARK"}
+        </button>
+      </div>
 
       {/* ── ヘッダー ── */}
       <div style={{
@@ -168,71 +176,74 @@ export default function Portal() {
         gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
         gap: 16, padding: 20,
       }}>
-        {APPS.map(app => (
-          <div
-            key={app.id}
-            onClick={() => app.ready && navigate(app.path)}
-            style={{
-              background: C.card,
-              border: `1px solid ${C.line}`,
-              borderRadius: 16,
-              padding: "20px 16px",
-              cursor: app.ready ? "pointer" : "default",
-              opacity: app.ready ? 1 : 0.6,
-              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)",
-              transition: "transform .2s, box-shadow .2s, border-color .2s",
-              position: "relative",
-            }}
-            onMouseEnter={e => { 
-              if (app.ready) { 
-                e.currentTarget.style.transform = "translateY(-4px)"; 
-                e.currentTarget.style.boxShadow = `0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)`; 
-                e.currentTarget.style.borderColor = app.color;
-              } 
-            }}
-            onMouseLeave={e => { 
-              e.currentTarget.style.transform = "none"; 
-              e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)"; 
-              e.currentTarget.style.borderColor = C.line;
-            }}
-          >
-            {/* ミニマルSVGアイコンコンテナ */}
-            <div style={{
-              marginBottom: 14,
-              width: 44, height: 44, borderRadius: 12,
-              background: app.color + "0d", // さらに薄くして上品に
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              {Icons[app.icon](app.color)}
-            </div>
-            
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: C.text }}>
-              {app.name}
-            </div>
-            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
-              {app.desc}
-            </div>
-            {!app.ready && (
+        {APPS.map(app => {
+          const appColor = C[app.colorKey];
+          return (
+            <div
+              key={app.id}
+              onClick={() => app.ready && navigate(app.path)}
+              style={{
+                background: C.card,
+                border: `1px solid ${C.line}`,
+                borderRadius: 16,
+                padding: "20px 16px",
+                cursor: app.ready ? "pointer" : "default",
+                opacity: app.ready ? 1 : 0.6,
+                boxShadow: isDark ? "0 4px 6px -1px rgba(0,0,0,0.5)" : "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+                transition: "transform .2s, box-shadow .2s, border-color .2s",
+                position: "relative",
+              }}
+              onMouseEnter={e => { 
+                if (app.ready) { 
+                  e.currentTarget.style.transform = "translateY(-4px)"; 
+                  e.currentTarget.style.boxShadow = `0 10px 15px -3px rgba(0, 0, 0, 0.2)`; 
+                  e.currentTarget.style.borderColor = appColor;
+                } 
+              }}
+              onMouseLeave={e => { 
+                e.currentTarget.style.transform = "none"; 
+                e.currentTarget.style.boxShadow = isDark ? "0 4px 6px -1px rgba(0,0,0,0.5)" : "0 4px 6px -1px rgba(0, 0, 0, 0.05)"; 
+                e.currentTarget.style.borderColor = C.line;
+              }}
+            >
               <div style={{
-                position: "absolute", top: 12, right: 12,
-                background: "#f1f5f9", color: C.muted,
-                fontSize: 10, padding: "2px 8px", borderRadius: 999,
-                fontWeight: 500, border: `1px solid ${C.line}`
+                marginBottom: 14,
+                width: 44, height: 44, borderRadius: 12,
+                background: appColor + (isDark ? "22" : "0d"),
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                準備中
+                {Icons[app.icon](appColor)}
               </div>
-            )}
-            {app.ready && (
-              <div style={{
-                marginTop: 14, display: "flex", alignItems: "center", gap: 4,
-                fontSize: 12, color: app.color, fontWeight: 600,
-              }}>
-                <span>開く</span>
-                <span>→</span>
+              
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: C.text }}>
+                {app.name}
               </div>
-            )}
-          </div>
-        ))}
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+                {app.desc}
+              </div>
+              {!app.ready && (
+                <div style={{
+                  position: "absolute", top: 12, right: 12,
+                  background: isDark ? "#1e2d45" : "#f1f5f9", 
+                  color: C.muted,
+                  fontSize: 10, padding: "2px 8px", borderRadius: 999,
+                  fontWeight: 500, border: `1px solid ${C.line}`
+                }}>
+                  準備中
+                </div>
+              )}
+              {app.ready && (
+                <div style={{
+                  marginTop: 14, display: "flex", alignItems: "center", gap: 4,
+                  fontSize: 12, color: appColor, fontWeight: 600,
+                }}>
+                  <span>開く</span>
+                  <span>→</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* ── フッター ── */}
