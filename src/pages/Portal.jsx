@@ -1,6 +1,6 @@
 /**
  * 岡野ファミリー Apps ポータル
- * 全アプリへの入口ページ (Plan A/B: テーマ切り替え＆全画面同期対応版)
+ * 全アプリへの入口ページ (Plan A/B: テーマ切り替え＆スマホ操作性最適化版)
  */
 import { useState, useEffect } from "react";
 
@@ -90,13 +90,11 @@ function getLastUpdated() {
 export default function Portal() {
   const [theme, setTheme] = useState("light");
 
-  // 初回起動時に保存されたテーマを読み込む
   useEffect(() => {
     const savedTheme = localStorage.getItem("okano-app-theme") || "light";
     setTheme(savedTheme);
   }, []);
 
-  // テーマ切り替え処理＆保存
   const toggleTheme = () => {
     const nextTheme = theme === "light" ? "dark" : "light";
     setTheme(nextTheme);
@@ -117,15 +115,16 @@ export default function Portal() {
       transition: "background 0.3s, color 0.3s"
     }}>
 
-      {/* ── スマホ画面上部の押し下げ用アクセントバー ＋ 切り替えスイッチ ── */}
+      {/* ── スマホ画面上部の押し下げ用アクセントバー（高さを2.5倍の90pxに拡張） ── */}
       <div style={{ 
         background: C.acc, 
-        height: "36px", 
+        height: "90px", 
         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-end",       // ボタンを下側に配置して親指を届きやすく
         justifyContent: "flex-end",
-        padding: "0 16px"
+        padding: "0 16px 14px 16px",  // 下部に程よいマージン
+        boxSizing: "border-box"
       }}>
         <button 
           onClick={toggleTheme}
@@ -134,14 +133,15 @@ export default function Portal() {
             border: "none",
             borderRadius: "20px",
             color: "#fff",
-            padding: "4px 12px",
-            fontSize: "11px",
-            fontWeight: "600",
+            padding: "6px 16px",        // タップ領域を少し広げて押しやすく
+            fontSize: "12px",
+            fontWeight: "700",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             gap: "4px",
-            outline: "none"
+            outline: "none",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
           }}
         >
           {isDark ? "☀️ LIGHT" : "🌙 DARK"}
