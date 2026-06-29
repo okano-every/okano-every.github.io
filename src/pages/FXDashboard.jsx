@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
 
@@ -367,7 +366,6 @@ function TableTab() {
 // MAIN
 // ─────────────────────────────────────────────────────────────────
 export default function FXDashboard() {
-  const navigate   = useNavigate();
   const [tab,      setTab]      = useState("summary");
   const [sumMode,  setSumMode]  = useState("month");
   const [sumMonth, setSumMonth] = useState("2026-05");
@@ -386,7 +384,7 @@ export default function FXDashboard() {
       <div style={S.hdr}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
-            onClick={() => navigate("/")}
+            onClick={() => window.history.back()}
             style={{
               display: "flex", alignItems: "center", gap: 4,
               padding: "5px 10px", borderRadius: 8,

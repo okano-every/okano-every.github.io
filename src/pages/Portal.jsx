@@ -2,7 +2,6 @@
  * 岡野ファミリー Apps ポータル
  * 全アプリへの入口ページ
  */
-import { useNavigate } from "react-router-dom";
 
 const C = {
   bg: "#0a0f1a", card: "#121c2e", line: "#1e2d45",
@@ -10,7 +9,6 @@ const C = {
   acc: "#3b82f6", green: "#22c55e", amber: "#f59e0b", purple: "#8b5cf6",
 };
 
-// ── アプリ定義（追加するたびここに足す）─────────────────
 const APPS = [
   {
     id:    "dashboard",
@@ -28,7 +26,7 @@ const APPS = [
     desc:  "HFM / Exness / XM 取引履歴・損益・残高推移（2023-06〜）",
     path:  "/fx",
     color: C.green,
-    ready: true,   // ← 変更: false → true
+    ready: true,
   },
   {
     id:    "crypto",
@@ -68,7 +66,6 @@ const APPS = [
   },
 ];
 
-// ── 最終更新日（localStorage から取得）───────────────────
 function getLastUpdated() {
   try {
     const raw = localStorage.getItem("okano-assets-v3");
@@ -81,7 +78,8 @@ function getLastUpdated() {
 }
 
 export default function Portal() {
-  const navigate    = useNavigate();
+  // react-router-dom 不使用 → window.location で遷移（Claude preview・GitHub Pages 両対応）
+  const navigate    = (path) => { window.location.href = path; };
   const lastUpdated = getLastUpdated();
   const now         = new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
 
@@ -135,7 +133,6 @@ export default function Portal() {
             onMouseEnter={e => { if (app.ready) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 6px 24px ${app.color}22`; } }}
             onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
           >
-            {/* アイコン */}
             <div style={{
               fontSize: 28, marginBottom: 10,
               width: 48, height: 48, borderRadius: 12,
@@ -144,18 +141,12 @@ export default function Portal() {
             }}>
               {app.icon}
             </div>
-
-            {/* アプリ名 */}
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, color: C.text }}>
               {app.name}
             </div>
-
-            {/* 説明 */}
             <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
               {app.desc}
             </div>
-
-            {/* 準備中バッジ */}
             {!app.ready && (
               <div style={{
                 position: "absolute", top: 10, right: 10,
@@ -165,8 +156,6 @@ export default function Portal() {
                 準備中
               </div>
             )}
-
-            {/* 利用可能バッジ */}
             {app.ready && (
               <div style={{
                 marginTop: 10, display: "flex", alignItems: "center", gap: 4,
