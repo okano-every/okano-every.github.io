@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
 
@@ -366,6 +367,7 @@ function TableTab() {
 // MAIN
 // ─────────────────────────────────────────────────────────────────
 export default function FXDashboard() {
+  const navigate   = useNavigate();
   const [tab,      setTab]      = useState("summary");
   const [sumMode,  setSumMode]  = useState("month");
   const [sumMonth, setSumMonth] = useState("2026-05");
@@ -382,9 +384,25 @@ export default function FXDashboard() {
   return (
     <div style={S.page}>
       <div style={S.hdr}>
-        <div>
-          <div style={S.hdrT}>FX 取引履歴ダッシュボード</div>
-          <div style={S.hdrS}>2023-06 〜 2026-05 | {RAW.length} レコード</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            onClick={() => navigate("/")}
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "5px 10px", borderRadius: 8,
+              border: "1px solid #e2e8f0", background: "#f8fafc",
+              fontSize: 12, color: "#64748b", cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.color = "#1e293b"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.color = "#64748b"; }}
+          >
+            ← ポータルへ
+          </button>
+          <div>
+            <div style={S.hdrT}>FX 取引履歴ダッシュボード</div>
+            <div style={S.hdrS}>2023-06 〜 2026-05 | {RAW.length} レコード</div>
+          </div>
         </div>
         <div style={S.hdrS}>最終更新: 2026-06-28</div>
       </div>
