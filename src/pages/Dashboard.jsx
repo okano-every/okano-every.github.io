@@ -104,7 +104,7 @@ const USD_ITEMS = [
 ];
 const USD_SUM = USD_ITEMS.reduce((s, i) => s + i.usd, 0);
 
-// iDeCo（カラム統一のため構造を拡張、取得単価等はハイフン表示）
+// iDeCo
 const IDECO_ITEMS = [
   { name:"eMAXIS Slim 全世界(除く日本)", amount:112673, cost:93245, pnl:19428, costPrice: "-", qty: "-", price: "-", divYield: "-", divMonth: "-" },
   { name:"eMAXIS Slim S&P500",          amount:  1639, cost: 1268, pnl:   371, costPrice: "-", qty: "-", price: "-", divYield: "-", divMonth: "-" },
@@ -269,7 +269,7 @@ const TAB_LB = {
   banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金", missing:"⚠️ 未連携",
 };
 
-let C; // グローバル退避用
+let C;
 
 export default function Dashboard() {
   const [tab,     setTab]     = useState("summary");
@@ -280,7 +280,6 @@ export default function Dashboard() {
   const [addMode, setAddMode] = useState(false);
   const [theme,   setTheme]   = useState("light");
 
-  // 初回起動時に保存されたテーマを同期
   useEffect(() => {
     const savedTheme = localStorage.getItem("okano-app-theme") || "light";
     setTheme(savedTheme);
@@ -295,7 +294,6 @@ export default function Dashboard() {
   const isDark = theme === "dark";
   C = getColors(isDark);
 
-  // レート取得修正
   useEffect(() => {
     fetch("https://open.er-api.com/v6/latest/USD")
       .then(r => r.json())
@@ -346,16 +344,17 @@ export default function Dashboard() {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text, fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", padding: 16, transition: "background 0.3s, color 0.3s" }}>
 
-      {/* ── スマホ画面上部の押し下げ用アクセントバー ＋ 切り替えスイッチ ── */}
+      {/* ── スマホ画面上部の押し下げ用アクセントバー（高さを2.5倍の90pxに拡張＆ボタン位置調整） ── */}
       <div style={{ 
         background: C.acc, 
-        height: "36px", 
+        height: "90px", 
         margin: "-16px -16px 16px -16px", 
         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-end",       // ボタンを下側に配置して親指を届きやすく
         justifyContent: "flex-end",
-        padding: "0 16px"
+        padding: "0 16px 14px 16px",  // 下部に程よいマージン
+        boxSizing: "border-box"
       }}>
         <button 
           onClick={toggleTheme}
@@ -364,21 +363,22 @@ export default function Dashboard() {
             border: "none",
             borderRadius: "20px",
             color: "#fff",
-            padding: "4px 12px",
-            fontSize: "11px",
-            fontWeight: "600",
+            padding: "6px 16px",        // タップ領域を少し広げて押しやすく
+            fontSize: "12px",
+            fontWeight: "700",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             gap: "4px",
-            outline: "none"
+            outline: "none",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
           }}
         >
           {isDark ? "☀️ LIGHT" : "🌙 DARK"}
         </button>
       </div>
 
-      {/* ── ヘッダー（目標割合・目標バー等のノイズを完全削除しミニマル化） ── */}
+      {/* ── ヘッダー ── */}
       <div style={{ background: C.card, borderRadius: 16, padding: "20px", marginBottom: 16, border: `1px solid ${C.line}`, boxShadow: isDark ? "0 4px 6px -1px rgba(0,0,0,0.5)" : "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
         <button onClick={() => window.history.back()}
           style={{ background: "none", border: "none", color: C.acc, fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0, display: "flex", alignItems: "center", gap: 4 }}>
@@ -599,7 +599,7 @@ export default function Dashboard() {
       )}
 
       {/* ══════════════════════════════════ */}
-      {/* TAB: 証券銘柄（ご要望のカラムを完全網羅拡張） */}
+      {/* TAB: 証券銘柄                      */}
       {/* ══════════════════════════════════ */}
       {tab === "securities" && (
         <div>
@@ -661,9 +661,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ══════════════════════════════════ */}
-      {/* TAB: 銀行/外貨                     */}
-      {/* ══════════════════════════════════ */}
+      {/* ── TAB: 銀行/外貨 ── */}
       {tab === "banks" && (
         <div>
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
@@ -685,7 +683,6 @@ export default function Dashboard() {
             </table>
           </div>
 
-          {/* 米ドル資産カード */}
           <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, borderBottom: `1px solid ${C.line}`, paddingBottom: 10 }}>
               <div style={{ fontSize: 14, fontWeight: 700 }}>💵 米ドル資産（MoneyTree集計内）</div>
@@ -725,19 +722,13 @@ export default function Dashboard() {
                 </tr>
               </tbody>
             </table>
-            <div style={{ marginTop: 10, fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
-              ⚠️ MT_TOTALにはMoneyTree独自レートで換算済み。上記はリアルタイムレートによる参考値。
-            </div>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════ */}
-      {/* TAB: 保険/年金                     */}
-      {/* ══════════════════════════════════ */}
+      {/* ── TAB: 保険/年金 ── */}
       {tab === "insurance" && (
         <div>
-          {/* ソニー生命 */}
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
             <SecHead title="ソニー生命（解約返戻金）" total={SONY_TOTAL} cost={SONY_COST} pnl={SONY_PNL}/>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -761,7 +752,6 @@ export default function Dashboard() {
             </table>
           </div>
 
-          {/* iDeCo (証券銘柄側とカラム項目構造を統一) */}
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
             <SecHead title="iDeCo（SBI確定拠出年金）" total={IDECO_TOTAL} cost={IDECO_COST} pnl={IDECO_PNL}/>
             <div style={{ overflowX: "auto" }}>
@@ -885,29 +875,6 @@ export default function Dashboard() {
               )}
             </div>
           ))}
-          {addMode && <JaAddForm onAdd={addJa} onCancel={() => setAddMode(false)}/>}
-        </div>
-      )}
-
-      {/* ══════════════════════════════════ */}
-      {/* TAB: 未連携                        */}
-      {/* ══════════════════════════════════ */}
-      {tab === "missing" && (
-        <div>
-          <div style={{ fontSize: 13, color: C.muted, marginBottom: 12, background: C.card, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.line}`, fontWeight: 500 }}>スクリプト完成次第、順次追加予定。</div>
-          {MISSING_LIST.map((m, i) => (
-            <div key={i} style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              padding: "12px 16px", background: C.card, borderRadius: 12,
-              marginBottom: 8, border: `1px solid ${C.line}`,
-              boxShadow: "0 2px 4px rgba(0,0,0,0.01)"
-            }}>
-              <span style={{ color: m.done ? C.green : C.red, fontSize: 14, fontWeight: 600 }}>
-                {m.done ? "✓" : "⚠️"} {m.name}
-              </span>
-              <span style={{ color: C.muted, fontSize: 12, fontWeight: 500 }}>{m.status}</span>
-            </div>
-          ))}
         </div>
       )}
 
@@ -918,3 +885,19 @@ export default function Dashboard() {
     </div>
   );
 }
+
+// ================================================================
+// テーマカラー動的定義
+// ================================================================
+const getColors = (isDark) => ({
+  bg: isDark ? "#0a0f1a" : "#f8fafc",
+  card: isDark ? "#121c2e" : "#ffffff",
+  line: isDark ? "#1e2d45" : "#e2e8f0",
+  text: isDark ? "#e2e8f0" : "#0f172a",
+  muted: isDark ? "#4a6080" : "#64748b",
+  acc: "#0052cc",
+  green: "#0284c7",
+  amber: isDark ? "#f59e0b" : "#b45309",
+  red: "#ea580c",
+  purple: isDark ? "#a78bfa" : "#7c3aed",
+});
