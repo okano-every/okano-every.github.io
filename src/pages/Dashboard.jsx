@@ -2,20 +2,20 @@ import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 // ================================================================
-// カラーパレット (Plan A: ウェルスナビ風 クリーン・ライト)
+// テーマカラー動的定義 (Portalと完全に同期)
 // ================================================================
-const C = {
-  bg: "#f8fafc",      // 清潔感のある青みのあるライトグレー
-  card: "#ffffff",    // 純白のカードベース
-  line: "#e2e8f0",    // スッキリとした薄い境界線
-  text: "#0f172a",    // 洗練されたメイン文字（ネイビーブラック）
-  muted: "#64748b",   // 控えめなラベル文字（チャコールグレー）
-  acc: "#0052cc",     // ウェルスナビ風の上品なコーポレートブルー
-  green: "#0284c7",   // 利益・ポジティブ（爽やかなシアンブルー）
-  amber: "#b45309",   // 警告・注意（ライト背景で視認性の高いアンバー）
-  red: "#ea580c",     // 損失・ネガティブ（落ち着いたオレンジ）
-  purple: "#7c3aed",  // iDeCo等（深みのあるパープル）
-};
+const getColors = (isDark) => ({
+  bg: isDark ? "#0a0f1a" : "#f8fafc",      // 背景（深ネイビー / 薄グレー）
+  card: isDark ? "#121c2e" : "#ffffff",    // カード（ダークネイビー / 純白）
+  line: isDark ? "#1e2d45" : "#e2e8f0",    // 境界線
+  text: isDark ? "#e2e8f0" : "#0f172a",    // メイン文字
+  muted: isDark ? "#4a6080" : "#64748b",   // 補助文字
+  acc: "#0052cc",     // コーポレートブルー
+  green: "#0284c7",   // 利益・ポジティブカラー
+  amber: isDark ? "#f59e0b" : "#b45309",   // 警告・注意
+  red: "#ea580c",     // 損失・ネガティブカラー
+  purple: isDark ? "#a78bfa" : "#7c3aed",  // iDeCo等
+});
 
 // ================================================================
 // ヘルパー（すべて「#,###」のフル桁カンマ表示に統一）
@@ -48,34 +48,34 @@ function calcJA(c) {
 }
 
 // ================================================================
-// データ定義（スクレイプ日: 2026/06/28）
+// 【最新データ拡張】証券（Robofolio: SBI 本人/妻 + 日興 子供3名の詳細データを完全マッピング）
 // ================================================================
 const DATA_DATE = "2026/06/28";
-const GOAL      = 200_000_000;
-const GOAL_YEAR = 2037;
 
-// 証券（Robofolio: SBI 本人/妻 + 日興 子供3名）
 const RF_ITEMS = [
-  { name:"eMAXIS Slim オルカン",  sub:"NISA成長", amount:3_696_245, pnl: 864_206, owner:"本人", acc:"SBI" },
-  { name:"iS米国債七十(1655)",     sub:"NISA",    amount:2_044_590, pnl:  44_310, owner:"本人", acc:"SBI" },
-  { name:"iS米国債37ヘジ(2856)",   sub:"特定",    amount:2_009_950, pnl: -27_450, owner:"本人", acc:"SBI" },
-  { name:"SBI高配当株式",          sub:"NISA",    amount:1_571_655, pnl: 361_979, owner:"本人", acc:"SBI" },
-  { name:"eMAXIS Slim オルカン",  sub:"特定",     amount:  692_052, pnl:  32_051, owner:"本人", acc:"SBI" },
-  { name:"eMAXIS Slim S&P500",    sub:"特定",     amount:  218_235, pnl:   8_235, owner:"本人", acc:"SBI" },
-  { name:"eMAXIS Slim S&P500",    sub:"NISA",     amount:  112_147, pnl:  12_147, owner:"本人", acc:"SBI" },
-  { name:"ニッセイNASDAQ100",      sub:"特定",     amount:   32_971, pnl:   2_971, owner:"本人", acc:"SBI" },
-  { name:"eMAXIS Neo 宇宙開発",   sub:"特定",     amount:    2_742, pnl:     242, owner:"本人", acc:"SBI" },
-  { name:"eMAXIS Slim オルカン",  sub:"NISA",     amount:  236_335, pnl:  16_330, owner:"妻",   acc:"SBI" },
-  { name:"eMAXIS Slim S&P500",    sub:"NISA",     amount:  169_446, pnl:   9_446, owner:"妻",   acc:"SBI" },
-  { name:"ニッセイNASDAQ100",      sub:"NISA",     amount:  164_836, pnl:  14_832, owner:"妻",   acc:"SBI" },
-  { name:"SBI高配当株式 年4回",    sub:"NISA",     amount:  161_526, pnl:  29_159, owner:"妻",   acc:"SBI" },
-  { name:"日本株配当オープン",      sub:"NISA",     amount:      734, pnl:      68, owner:"妻",   acc:"SBI" },
-  { name:"日本株配当オープン",      sub:"特定",     amount:  550_355, pnl:  46_401, owner:"長女", acc:"日興" },
-  { name:"楽天全米株式",           sub:"特定",     amount:  237_929, pnl:  57_929, owner:"長女", acc:"日興" },
-  { name:"eMAXIS Slim S&P500",    sub:"特定",     amount:  770_837, pnl: 100_837, owner:"次女", acc:"日興" },
-  { name:"eMAXIS Slim S&P500",    sub:"特定",     amount:  281_572, pnl:  22_572, owner:"長男", acc:"日興" },
-  { name:"eMAXIS Slim オルカン",  sub:"特定",     amount:  124_059, pnl:  32_060, owner:"長男", acc:"日興" },
-  { name:"SBI高配当株式",          sub:"特定",     amount:  278_484, pnl:  19_484, owner:"長男", acc:"日興" },
+  // ── 本人 SBI ──
+  { name:"eMAXIS Slim オルカン",  sub:"NISA成長", amount:3696245, pnl: 864206, owner:"本人", acc:"SBI", costPrice: 28852.55, qty: 981556, price: 37657, divYield: "-", divMonth: "-" },
+  { name:"iS米国債七十(1655)",     sub:"NISA",    amount:2044590, pnl:  44310, owner:"本人", acc:"SBI", costPrice: 316.00,    qty: 6330,   price: 323,   divYield: "-", divMonth: "-" },
+  { name:"iS米国債37ヘジ(2856)",   sub:"特定",    amount:2009950, pnl: -27450, owner:"本人", acc:"SBI", costPrice: 668.00,    qty: 3050,   price: 659,   divYield: "-", divMonth: "-" },
+  { name:"SBI高配当株式",          sub:"NISA",    amount:1571655, pnl: 361979, owner:"本人", acc:"SBI", costPrice: 19249.00,   qty: 628436, price: 25009, divYield: "-", divMonth: "-" },
+  { name:"eMAXIS Slim オルカン",  sub:"特定",     amount: 692052, pnl:  32051, owner:"本人", acc:"SBI", costPrice: 35913.00,   qty: 183778, price: 37657, divYield: "-", divMonth: "-" },
+  { name:"eMAXIS Slim S&P500",    sub:"特定",     amount: 218235, pnl:   8235, owner:"本人", acc:"SBI", costPrice: 42102.00,   qty: 49879,  price: 43753, divYield: "-", divMonth: "-" },
+  { name:"eMAXIS Slim S&P500",    sub:"NISA",     amount: 112147, pnl:  12147, owner:"本人", acc:"SBI", costPrice: 39014.00,   qty: 25632,  price: 43753, divYield: "-", divMonth: "-" },
+  { name:"ニッセイNASDAQ100",      sub:"特定",     amount:  32971, pnl:   2971, owner:"本人", acc:"SBI", costPrice: 25655.00,   qty: 11694,  price: 28195, divYield: "-", divMonth: "-" },
+  { name:"eMAXIS Neo 宇宙開発",   sub:"特定",     amount:   2742, pnl:    242, owner:"本人", acc:"SBI", costPrice: 51653.00,   qty: 484,    price: 56654, divYield: "-", divMonth: "-" },
+  // ── 妻 SBI ──
+  { name:"eMAXIS Slim オルカン",  sub:"NISA",     amount: 236335, pnl:  16330, owner:"妻",   acc:"SBI", costPrice: 35055.00,   qty: 62760,  price: 37657, divYield: "-", divMonth: "-" },
+  { name:"eMAXIS Slim S&P500",    sub:"NISA",     amount: 169446, pnl:   9446, owner:"妻",   acc:"SBI", costPrice: 41314.00,   qty: 38728,  price: 43753, divYield: "-", divMonth: "-" },
+  { name:"ニッセイNASDAQ100",      sub:"NISA",     amount: 164836, pnl:  14832, owner:"妻",   acc:"SBI", costPrice: 25658.00,   qty: 58463,  price: 28195, divYield: "-", divMonth: "-" },
+  { name:"SBI高配当株式 年4回",    sub:"NISA",     amount: 161526, pnl:  29159, owner:"妻",   acc:"SBI", costPrice: 12511.00,   qty: 105801, price: 15267, divYield: "-", divMonth: "-" },
+  { name:"日本株配当オープン",      sub:"NISA",     amount:    734, pnl:     68, owner:"妻",   acc:"SBI", costPrice: 15708.00,   qty: 424,    price: 17326, divYield: "-", divMonth: "-" },
+  // ── 子供 日興 ──
+  { name:"日本株配当オープン",      sub:"特定",     amount: 550355, pnl:  46401, owner:"長女", acc:"日興", costPrice: 15294.74,   qty: 329495, price: 16703, divYield: "-", divMonth: "-" },
+  { name:"楽天全米株式",           sub:"特定",     amount: 237929, pnl:  57929, owner:"長女", acc:"日興", costPrice: 33313.60,   qty: 54032,  price: 44035, divYield: "-", divMonth: "-" },
+  { name:"eMAXIS Slim S&P500",    sub:"特定",     amount: 770837, pnl: 100837, owner:"次女", acc:"日興", costPrice: 37905.15,   qty: 176757, price: 43610, divYield: "-", divMonth: "-" },
+  { name:"eMAXIS Slim S&P500",    sub:"特定",     amount: 281572, pnl:  22572, owner:"長男", acc:"日興", costPrice: 40114.00,   qty: 64566,  price: 43610, divYield: "-", divMonth: "-" },
+  { name:"eMAXIS Slim オルカン",  sub:"特定",     amount: 124059, pnl:  32060, owner:"長男", acc:"日興", costPrice: 27556.46,   qty: 33386,  price: 37159, divYield: "-", divMonth: "-" },
+  { name:"SBI高配当株式",          sub:"特定",     amount: 278484, pnl:  19484, owner:"長男", acc:"日興", costPrice: 22937.41,   qty: 112916, price: 24663, divYield: "-", divMonth: "-" },
 ];
 const RF_TOTAL = RF_ITEMS.reduce((s, i) => s + i.amount, 0);
 const RF_PNL   = RF_ITEMS.reduce((s, i) => s + i.pnl,    0);
@@ -83,33 +83,33 @@ const RF_COST  = RF_TOTAL - RF_PNL;
 
 // 銀行口座
 const BANK_ITEMS = [
-  { name:"SMBC 本人",             amount:2_264_792, src:"MT", owner:"本人" },
-  { name:"SMBC 妻",               amount:  887_749, src:"MT", owner:"妻"   },
-  { name:"SMBC 長女",             amount:   10_074, src:"MT", owner:"長女" },
-  { name:"SMBC 次女",             amount:   10_074, src:"MT", owner:"次女" },
-  { name:"SMBC 長男",             amount:   10_166, src:"MT", owner:"長男" },
-  { name:"UFJ 本人",              amount:      566, src:"MT", owner:"本人" },
-  { name:"住信SBI 代表口座",      amount:      114, src:"MF", owner:"本人" },
-  { name:"住信SBI ハイブリッド",  amount:4_396_031, src:"MF", owner:"本人" },
+  { name:"SMBC 本人",             amount:2264792, src:"MT", owner:"本人" },
+  { name:"SMBC 妻",               amount: 887749, src:"MT", owner:"妻"   },
+  { name:"SMBC 長女",             amount:  10074, src:"MT", owner:"長女" },
+  { name:"SMBC 次女",             amount:  10074, src:"MT", owner:"次女" },
+  { name:"SMBC 長男",             amount:  10166, src:"MT", owner:"長男" },
+  { name:"UFJ 本人",              amount:    566, src:"MT", owner:"本人" },
+  { name:"住信SBI 代表口座",      amount:    114, src:"MF", owner:"本人" },
+  { name:"住信SBI ハイブリッド",  amount:4396031, src:"MF", owner:"本人" },
 ];
 const BANK_TOTAL = BANK_ITEMS.reduce((s, i) => s + i.amount, 0);
 
 // ドル建て資産
 const USD_ITEMS = [
-  { name:"米ドル建債券（本人/特定）", usd:14_816.34, owner:"本人" },
-  { name:"米ドルMMF（本人/特定）",   usd: 7_000.00, owner:"本人" },
-  { name:"米ドル現金（本人）",        usd: 7_000.00, owner:"本人" },
-  { name:"米ドルMMF（妻/特定）",     usd: 7_000.00, owner:"妻"   },
-  { name:"米ドル現金（妻）",          usd: 7_000.00, owner:"妻"   },
+  { name:"米ドル建債券（本人/特定）", usd:14816.34, owner:"本人" },
+  { name:"米ドルMMF（本人/特定）",   usd: 7000.00, owner:"本人" },
+  { name:"米ドル現金（本人）",        usd: 7000.00, owner:"本人" },
+  { name:"米ドルMMF（妻/特定）",     usd: 7000.00, owner:"妻"   },
+  { name:"米ドル現金（妻）",          usd: 7000.00, owner:"妻"   },
 ];
 const USD_SUM = USD_ITEMS.reduce((s, i) => s + i.usd, 0);
 
-// iDeCo
+// iDeCo（カラム統一のため構造を拡張、取得単価等はハイフン表示）
 const IDECO_ITEMS = [
-  { name:"eMAXIS Slim 全世界(除く日本)", amount:112_673, cost:93_245, pnl:19_428 },
-  { name:"eMAXIS Slim S&P500",          amount:  1_639, cost: 1_268, pnl:   371 },
-  { name:"eMAXIS Slim 国内株式(TOPIX)", amount: 14_676, cost:11_295, pnl: 3_381 },
-  { name:"eMAXIS Slim 新興国株式",      amount:    878, cost:   561, pnl:   317 },
+  { name:"eMAXIS Slim 全世界(除く日本)", amount:112673, cost:93245, pnl:19428, costPrice: "-", qty: "-", price: "-", divYield: "-", divMonth: "-" },
+  { name:"eMAXIS Slim S&P500",          amount:  1639, cost: 1268, pnl:   371, costPrice: "-", qty: "-", price: "-", divYield: "-", divMonth: "-" },
+  { name:"eMAXIS Slim 国内株式(TOPIX)", amount: 14676, cost:11295, pnl:  3381, costPrice: "-", qty: "-", price: "-", divYield: "-", divMonth: "-" },
+  { name:"eMAXIS Slim 新興国株式",      amount:   878, cost:  561, pnl:   317, costPrice: "-", qty: "-", price: "-", divYield: "-", divMonth: "-" },
 ];
 const IDECO_TOTAL = IDECO_ITEMS.reduce((s, i) => s + i.amount, 0);
 const IDECO_COST  = IDECO_ITEMS.reduce((s, i) => s + i.cost,   0);
@@ -117,8 +117,8 @@ const IDECO_PNL   = IDECO_ITEMS.reduce((s, i) => s + i.pnl,    0);
 
 // ソニー生命
 const SONY_ITEMS = [
-  { id:1, name:"契約1", certNo:"3607496942", amount:3_258_542, cost:2_206_200 },
-  { id:2, name:"契約2", certNo:"3826415397", amount:1_428_395, cost:1_155_932 },
+  { id:1, name:"契約1", certNo:"3607496942", amount:3258542, cost:2206200 },
+  { id:2, name:"契約2", certNo:"3826415397", amount:1428395, cost:1155932 },
 ];
 const SONY_TOTAL = SONY_ITEMS.reduce((s, i) => s + i.amount, 0);
 const SONY_COST  = SONY_ITEMS.reduce((s, i) => s + i.cost,   0);
@@ -130,16 +130,16 @@ const INIT_JA = [{
   name:"JA共済 個人年金", type:"個人年金（旧）",
   policyId:"2308432346", certNo:"23220002997823",
   holder:"岡野一貴", beneficiary:"岡野一貴",
-  monthlyPayment:10_000, startDate:"2011-08-18",
+  monthlyPayment:10000, startDate:"2011-08-18",
   rate1:0.009, rate1Years:5, rate2:0.0075, termYears:36,
   annuityStartYear:2048, annuityEndYear:2058,
-  minAnnualAmount:465_300, confirmedAnnualAmount:494_000,
+  minAnnualAmount:465300, confirmedAnnualAmount:494000,
   notes:"当初5年 0.9% → 以降 0.75%最低保証\n最低4,653,000円（46.53万×10年）\n年金受取: 2048〜2058年（10年間）\n23/3/1 49.2万/年・25/9/1 49.4万/年 ✓確認済",
 }];
 
-const MT_TOTAL  = 27_656_207;
-const MF_UNIQUE =  4_396_145;
-const IDECO_ADJ =      3_667;
+const MT_TOTAL  = 27656_207;
+const MF_UNIQUE =  4396_145;
+const IDECO_ADJ =      3667;
 
 const MISSING_LIST = [
   { name:"SCB タイバーツ口座",     status:"スクリプト作成中",  done:false },
@@ -261,13 +261,15 @@ function JaAddForm({ onAdd, onCancel }) {
 }
 
 // ================================================================
-// メインコンポーネント
+// 各種定義
 // ================================================================
 const TABS   = ["summary","pnl","securities","banks","insurance","missing"];
 const TAB_LB = {
   summary:"📊 サマリー", pnl:"💹 投資収益", securities:"📈 証券銘柄",
   banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金", missing:"⚠️ 未連携",
 };
+
+let C; // グローバル退避用
 
 export default function Dashboard() {
   const [tab,     setTab]     = useState("summary");
@@ -276,15 +278,28 @@ export default function Dashboard() {
   const [jaList,  setJaList]  = useState(INIT_JA);
   const [editJa,  setEditJa]  = useState(null);
   const [addMode, setAddMode] = useState(false);
+  const [theme,   setTheme]   = useState("light");
 
-  // 【レート取得修正】より高頻度で安定し、CORSエラーのないAPIエンドポイントへ変更
+  // 初回起動時に保存されたテーマを同期
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("okano-app-theme") || "light";
+    setTheme(savedTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "light" ? "dark" : "light";
+    setTheme(nextTheme);
+    localStorage.setItem("okano-app-theme", nextTheme);
+  };
+
+  const isDark = theme === "dark";
+  C = getColors(isDark);
+
+  // レート取得修正
   useEffect(() => {
     fetch("https://open.er-api.com/v6/latest/USD")
       .then(r => r.json())
-      .then(d => { 
-        setUsdJpy(d.rates?.JPY || null); 
-        setUsdLoad(false); 
-      })
+      .then(d => { setUsdJpy(d.rates?.JPY || null); setUsdLoad(false); })
       .catch(() => setUsdLoad(false));
   }, []);
 
@@ -295,15 +310,12 @@ export default function Dashboard() {
   const jaPnl    = jaCalc.reduce((s, c) => s + c.pnl,   0);
 
   const GRAND_TOTAL = MT_TOTAL + MF_UNIQUE + SONY_TOTAL + IDECO_ADJ + jaTotal;
-  const progress    = GRAND_TOTAL / GOAL * 100;
-  const yearsLeft   = GOAL_YEAR - new Date().getFullYear();
-  const annualNeed  = (GOAL - GRAND_TOTAL) / yearsLeft;
 
   const pnlRows = [
     { label:"証券（SBI/日興）", cost:RF_COST,   value:RF_TOTAL,   color:C.acc },
     { label:"iDeCo",            cost:IDECO_COST, value:IDECO_TOTAL, color:C.purple, note:"MF取得価額使用" },
-    { label:"ソニー生命（2契約）",        cost:SONY_COST,  value:SONY_TOTAL,  color:"#f97316" },
-    { label:"JA共済-個人年金",  cost:jaCost,     value:jaTotal,    color:"#10b981", note:"複利計算（当初5年0.9%→以降0.75%）" },
+    { label:"ソニー生命",        cost:SONY_COST,  value:SONY_TOTAL,  color:"#f97316" },
+    { label:"JA共済（計算値）",  cost:jaCost,     value:jaTotal,    color:"#10b981", note:"複利計算（0.9%→0.75%）" },
   ];
   const invCost  = pnlRows.reduce((s, r) => s + r.cost,  0);
   const invValue = pnlRows.reduce((s, r) => s + r.value, 0);
@@ -316,7 +328,7 @@ export default function Dashboard() {
     { name:"債券・外貨・他",   value:pieMisc,     color:"#6366f1" },
     { name:"iDeCo",           value:IDECO_TOTAL, color:C.purple },
     { name:"ソニー生命",       value:SONY_TOTAL,  color:"#f97316" },
-    { name:"JA共済（見込み額）",           value:jaTotal,     color:"#10b981" },
+    { name:"JA共済",           value:jaTotal,     color:"#10b981" },
   ];
 
   const usdJpySum = usdJpy ? Math.round(USD_SUM * usdJpy) : 0;
@@ -326,48 +338,60 @@ export default function Dashboard() {
   const addJa     = (c)       => { setJaList(l => [...l, c]); setAddMode(false); };
 
   const Th = ({ children, right }) => (
-    <th style={{ textAlign: right ? "right" : "left", padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>
+    <th style={{ textAlign: right ? "right" : "left", padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, whiteSpace: "nowrap" }}>
       {children}
     </th>
   );
 
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", color: C.text, fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", padding: 16 }}>
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.text, fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", padding: 16, transition: "background 0.3s, color 0.3s" }}>
 
-      {/* ── 【新規】スマホ画面上部の押し下げ用アクセントバー ── */}
+      {/* ── スマホ画面上部の押し下げ用アクセントバー ＋ 切り替えスイッチ ── */}
       <div style={{ 
         background: C.acc, 
         height: "36px", 
         margin: "-16px -16px 16px -16px", 
-        boxShadow: "0 2px 4px rgba(0,0,0,0.05)" 
-      }} />
+        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        padding: "0 16px"
+      }}>
+        <button 
+          onClick={toggleTheme}
+          style={{
+            background: "rgba(255, 255, 255, 0.2)",
+            border: "none",
+            borderRadius: "20px",
+            color: "#fff",
+            padding: "4px 12px",
+            fontSize: "11px",
+            fontWeight: "600",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            outline: "none"
+          }}
+        >
+          {isDark ? "☀️ LIGHT" : "🌙 DARK"}
+        </button>
+      </div>
 
-      {/* ── ヘッダー ── */}
-      <div style={{ background: C.card, borderRadius: 16, padding: "20px", marginBottom: 16, border: `1px solid ${C.line}`, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
+      {/* ── ヘッダー（目標割合・目標バー等のノイズを完全削除しミニマル化） ── */}
+      <div style={{ background: C.card, borderRadius: 16, padding: "20px", marginBottom: 16, border: `1px solid ${C.line}`, boxShadow: isDark ? "0 4px 6px -1px rgba(0,0,0,0.5)" : "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
         <button onClick={() => window.history.back()}
           style={{ background: "none", border: "none", color: C.acc, fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0, display: "flex", alignItems: "center", gap: 4 }}>
           ← ポータルへ
         </button>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.05em" }}>総合資産</div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: C.text, marginTop: 4, letterSpacing: "-0.02em" }}>
-              {fmt(GRAND_TOTAL)}
-            </div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
-              {DATA_DATE} ｜ 資産ダッシュボード
-            </div>
+        <div>
+          <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.05em" }}>岡野ファミリー 総合資産</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: isDark ? "#ffffff" : C.text, marginTop: 4, letterSpacing: "-0.02em" }}>
+            {fmt(GRAND_TOTAL)}
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 26, fontWeight: 800, color: C.acc }}>{progress.toFixed(1)}%</div>
-            <div style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>目標{fmt(GOAL)} 残{yearsLeft}年</div>
-            <div style={{ fontSize: 11, color: C.red, fontWeight: 600, marginTop: 2 }}>年{fmt(annualNeed)}追加必要</div>
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
+            {DATA_DATE} ｜ 負債ネット済 ｜ JA共済計算値含む
           </div>
-        </div>
-
-        {/* プログレスバー */}
-        <div style={{ marginTop:14, background: "#e2e8f0", borderRadius: 999, height: 6, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${Math.min(100, progress)}%`, background: C.acc, borderRadius: 999 }}/>
         </div>
 
         {/* USD/JPY レート */}
@@ -408,10 +432,10 @@ export default function Dashboard() {
           {/* ミニカードグリッド */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10, marginBottom: 16 }}>
             {[
-              { label:"有価証券（評価損益）",    value:fmt(RF_TOTAL),              sub:`+${fmt(RF_PNL)}`,          clr:C.acc   },
+              { label:"証券（含み益）",    value:fmt(RF_TOTAL),              sub:`+${fmt(RF_PNL)}`,          clr:C.acc   },
               { label:"現金・預金",        value:fmt(BANK_TOTAL),            sub:"SMBC/UFJ/住信SBI",          clr:"#0284c7" },
               { label:"保険・年金合計",    value:fmt(SONY_TOTAL + jaTotal),  sub:"ソニー生命＋JA共済",        clr:"#10b981" },
-              { label:"iDeCo（評価損益）",  value:fmt(IDECO_TOTAL),           sub:`+${fmt(IDECO_PNL)}`,       clr:C.purple  },
+              { label:"iDeCo（評価益）",  value:fmt(IDECO_TOTAL),           sub:`+${fmt(IDECO_PNL)}`,       clr:C.purple  },
             ].map(({ label, value, sub, clr }) => (
               <div key={label} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
                 <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>{label}</div>
@@ -421,19 +445,19 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* 含み損益 ハイライトカード */}
+          {/* 含み益 ハイライトカード */}
           <div style={{
-            background: "#eff6ff", border: `1px solid #bfdbfe`, borderRadius: 14,
+            background: isDark ? "#0d2030" : "#eff6ff", border: `1px solid ${isDark ? "#1e3a5f" : "#bfdbfe"}`, borderRadius: 14,
             padding: "14px 18px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <div>
-              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>投資資産 総含み損益</div>
+              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>投資資産 総含み益</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: C.green, marginTop: 2 }}>+{fmt(invPnl)}</div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 11, color: C.muted }}>投資元本合計</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 2, fontFamily: "monospace" }}>{fmt(invCost)}</div>
-              <div style={{ fontSize: 12, color: C.green, fontWeight: 700, marginTop: 2 }}>評価損益率 +{(invPnl / invCost * 100).toFixed(1)}%</div>
+              <div style={{ fontSize: 12, color: C.green, fontWeight: 700, marginTop: 2 }}>利回り +{(invPnl / invCost * 100).toFixed(1)}%</div>
             </div>
           </div>
 
@@ -459,7 +483,7 @@ export default function Dashboard() {
               ))}
             </div>
             <div style={{ marginTop: 10, fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
-              ※ 債券・外貨・他 = 国内債券＋米ドル資産＋証券口座内現金
+              ※ 債券・外貨・他 = 国内債券¥3M＋米ドル資産＋証券口座内現金（MT集計から逆算）
             </div>
           </div>
         </div>
@@ -479,8 +503,8 @@ export default function Dashboard() {
                     <Th>区分</Th>
                     <Th right>投資元本</Th>
                     <Th right>評価額</Th>
-                    <Th right>評価損益額</Th>
-                    <Th right>評価損益率</Th>
+                    <Th right>含み損益</Th>
+                    <Th right>利回り</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -501,7 +525,7 @@ export default function Dashboard() {
                     );
                   })}
                   {/* 合計行 */}
-                  <tr style={{ borderTop: `2px solid ${C.acc}`, fontWeight: 700, background: "#f8fafc" }}>
+                  <tr style={{ borderTop: `2px solid ${C.acc}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
                     <td style={{ padding: "12px 8px", fontSize: 13, color: C.acc }}>▶ 投資合計</td>
                     <td style={{ padding: "12px 8px", fontSize: 13, textAlign: "right", color: C.muted, fontFamily: "monospace" }}>{fmt(invCost)}</td>
                     <td style={{ padding: "12px 8px", fontSize: 13, textAlign: "right", fontFamily: "monospace" }}>{fmt(invValue)}</td>
@@ -522,29 +546,29 @@ export default function Dashboard() {
                     </tr>
                   ))}
                   {/* 総合計 */}
-                  <tr style={{ borderTop: `2px solid ${C.text}`, fontWeight: 700, background: "#f0fdf4" }}>
+                  <tr style={{ borderTop: `2px solid ${C.text}`, fontWeight: 700, background: isDark ? "#0f2e1b" : "#f0fdf4" }}>
                     <td style={{ padding: "12px 8px", fontSize: 13, color: C.text }}>総資産合計</td>
                     <td style={{ padding: "12px 8px", fontSize: 13, textAlign: "right", color: C.muted }}>─</td>
                     <td style={{ padding: "12px 8px", fontSize: 13, textAlign: "right", color: C.green, fontFamily: "monospace", fontSize: 14 }}>{fmt(GRAND_TOTAL)}</td>
                     <td colSpan={2} style={{ padding: "12px 8px", fontSize: 12, textAlign: "right", color: C.muted, fontWeight: 600 }}>
-                      目標まで {fmt(GOAL - GRAND_TOTAL)}
+                      最終更新データ基準
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <div style={{ marginTop: 12, padding: "10px 14px", background: "#f0fdf4", borderRadius: 10, border: `1px solid #bbf7d0` }}>
+            <div style={{ marginTop: 12, padding: "10px 14px", background: isDark ? "#0f2e1b" : "#f0fdf4", borderRadius: 10, border: `1px solid ${isDark ? "#14532d" : "#bbf7d0"}` }}>
               <div style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>
-                総合含み損益 {sgn(invPnl)}{fmt(invPnl)} ／ 評価損益率 {sgn(invPnl)}{(invPnl / invCost * 100).toFixed(1)}%
+                総合含み益 {sgn(invPnl)}{fmt(invPnl)} ／ 投資利回り {sgn(invPnl)}{(invPnl / invCost * 100).toFixed(1)}%
               </div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.4 }}>
-                ※ 証券コスト = 評価額−含み損益（Robofolio取得値）｜ iDeCo = MF取得価額 ｜ JA共済 = 複利積立計算値
+                ※ 証券コスト = 評価額−含み益（Robofolio取得値）｜ iDeCo = MF取得価額 ｜ JA = 複利積立計算値
               </div>
             </div>
           </div>
 
           {/* 名義別サマリー */}
-          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
+          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>証券 名義別サマリー</div>
             {["本人","妻","長女","次女","長男"].map(owner => {
               const items = RF_ITEMS.filter(i => i.owner === owner);
@@ -575,12 +599,12 @@ export default function Dashboard() {
       )}
 
       {/* ══════════════════════════════════ */}
-      {/* TAB: 証券銘柄                      */}
+      {/* TAB: 証券銘柄（ご要望のカラムを完全網羅拡張） */}
       {/* ══════════════════════════════════ */}
       {tab === "securities" && (
         <div>
           <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, background: C.card, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.line}`, fontWeight: 500 }}>
-            Robofolio（SBI本人/妻 + 日興子供3名）｜ 合計 {fmt(RF_TOTAL)} 含み損益
+            Robofolio（SBI本人/妻 + 日興子供3名）｜ 合計 {fmt(RF_TOTAL)} 含み益
             <span style={{ color: C.green, fontWeight: 700 }}> +{fmt(RF_PNL)}</span>
           </div>
           {["本人","妻","長女","次女","長男"].map(owner => {
@@ -592,21 +616,40 @@ export default function Dashboard() {
               <div key={owner} style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
                 <SecHead title={`${owner}（${items[0].acc}）`} total={tot} cost={tot-pnl} pnl={pnl}/>
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr>
-                        <Th>銘柄</Th><Th>区分</Th><Th right>評価額</Th><Th right>含み損益</Th>
+                        <Th>銘柄</Th>
+                        <Th>区分</Th>
+                        <Th right>平均取得単価</Th>
+                        <Th right>保有数量</Th>
+                        <Th right>最新単価</Th>
+                        <Th right>評価額</Th>
+                        <Th right>含み損益</Th>
+                        <Th right>配当利回り</Th>
+                        <Th right>配当月</Th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.map((it, i) => (
                         <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
-                          <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.name}</td>
-                          <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{it.sub}</td>
-                          <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
-                          <td style={{ padding: "8px", textAlign: "right", color: pnlClr(it.pnl), fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>
+                          <td style={{ padding: "10px 8px", color: C.text, fontWeight: 600, whiteSpace: "nowrap" }}>{it.name}</td>
+                          <td style={{ padding: "10px 8px", color: C.muted, fontSize: 11, whiteSpace: "nowrap" }}>{it.sub}</td>
+                          <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                            {typeof it.costPrice === "number" ? it.costPrice.toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : it.costPrice}
+                          </td>
+                          <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                            {typeof it.qty === "number" ? it.qty.toLocaleString("ja-JP") : it.qty}
+                          </td>
+                          <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                            {typeof it.price === "number" ? it.price.toLocaleString("ja-JP") : it.price}
+                          </td>
+                          <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600, whiteSpace: "nowrap" }}>{fmt(it.amount)}</td>
+                          <td style={{ padding: "10px 8px", textAlign: "right", color: pnlClr(it.pnl), fontSize: 12, fontWeight: 700, fontFamily: "monospace", whiteSpace: "nowrap" }}>
                             {it.pnl >= 0 ? "+" : ""}{fmt(it.pnl)}
                           </td>
+                          <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: C.muted, whiteSpace: "nowrap" }}>{it.divYield}</td>
+                          <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: C.muted, whiteSpace: "nowrap" }}>{it.divMonth}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -643,7 +686,7 @@ export default function Dashboard() {
           </div>
 
           {/* 米ドル資産カード */}
-          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
+          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, borderBottom: `1px solid ${C.line}`, paddingBottom: 10 }}>
               <div style={{ fontSize: 14, fontWeight: 700 }}>💵 米ドル資産（MoneyTree集計内）</div>
               <div style={{ fontSize: 12 }}>
@@ -671,7 +714,7 @@ export default function Dashboard() {
                     </td>
                   </tr>
                 ))}
-                <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: "#f8fafc" }}>
+                <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
                   <td colSpan={2} style={{ padding: "10px 8px", fontSize: 13 }}>合計</td>
                   <td style={{ padding: "10px 8px", textAlign: "right", color: C.amber, fontFamily: "monospace" }}>
                     ${USD_SUM.toLocaleString("en-US", { minimumFractionDigits:2 })}
@@ -685,10 +728,6 @@ export default function Dashboard() {
             <div style={{ marginTop: 10, fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
               ⚠️ MT_TOTALにはMoneyTree独自レートで換算済み。上記はリアルタイムレートによる参考値。
             </div>
-          </div>
-
-          <div style={{ marginTop: 12, padding: "10px 14px", background: C.card, borderRadius: 12, fontSize: 12, color: C.muted, border: `1px solid ${C.line}`, fontWeight: 500 }}>
-            ⚠️ 住信SBIはMoneyForward専用取得（MT二重計上なし）｜ SCBタイ口座は未取得
           </div>
         </div>
       )}
@@ -722,24 +761,41 @@ export default function Dashboard() {
             </table>
           </div>
 
-          {/* iDeCo */}
+          {/* iDeCo (証券銘柄側とカラム項目構造を統一) */}
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
             <SecHead title="iDeCo（SBI確定拠出年金）" total={IDECO_TOTAL} cost={IDECO_COST} pnl={IDECO_PNL}/>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr><Th>銘柄</Th><Th right>取得価額</Th><Th right>現在価値</Th><Th right>含み損益</Th></tr>
-              </thead>
-              <tbody>
-                {IDECO_ITEMS.map((it, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
-                    <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.name} <Tag src="MF"/></td>
-                    <td style={{ padding: "8px", textAlign: "right", color: C.muted, fontFamily: "monospace" }}>{fmt(it.cost)}</td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
-                    <td style={{ padding: "8px", textAlign: "right", color: pnlClr(it.pnl), fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>+{fmt(it.pnl)}</td>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <Th>銘柄</Th>
+                    <Th right>平均取得単価</Th>
+                    <Th right>保有数量</Th>
+                    <Th right>最新単価</Th>
+                    <Th right>取得価額</Th>
+                    <Th right>現在価値</Th>
+                    <Th right>含み益</Th>
+                    <Th right>配当利回り</Th>
+                    <Th right>配当月</Th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {IDECO_ITEMS.map((it, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
+                      <td style={{ padding: "10px 8px", color: C.text, fontWeight: 600, whiteSpace: "nowrap" }}>{it.name} <Tag src="MF"/></td>
+                      <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: C.muted }}>{it.costPrice}</td>
+                      <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: C.muted }}>{it.qty}</td>
+                      <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: C.muted }}>{it.price}</td>
+                      <td style={{ padding: "10px 8px", textAlign: "right", color: C.muted, fontFamily: "monospace", whiteSpace: "nowrap" }}>{fmt(it.cost)}</td>
+                      <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600, whiteSpace: "nowrap" }}>{fmt(it.amount)}</td>
+                      <td style={{ padding: "10px 8px", textAlign: "right", color: pnlClr(it.pnl), fontSize: 12, fontWeight: 700, fontFamily: "monospace", whiteSpace: "nowrap" }}>+{fmt(it.pnl)}</td>
+                      <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: C.muted }}>{it.divYield}</td>
+                      <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: C.muted }}>{it.divMonth}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* JA共済 */}
@@ -752,7 +808,7 @@ export default function Dashboard() {
               </span>
             </div>
             <button onClick={() => setAddMode(true)} style={{
-              background: "#dcfce7", border: "1px solid #bbf7d0", color: "#15803d",
+              background: isDark ? "#14532d" : "#dcfce7", border: `1px solid ${isDark ? "#166534" : "#bbf7d0"}`, color: isDark ? "#34d399" : "#15803d",
               borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
             }}>＋追加</button>
           </div>
@@ -763,22 +819,17 @@ export default function Dashboard() {
               borderRadius: 16, padding: "16px", marginBottom: 12, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.02)"
             }}>
               {editJa?.id === c.id ? (
-                <JaEditForm
-                  contract={editJa}
-                  onChange={setEditJa}
-                  onSave={() => saveJa(editJa)}
-                  onCancel={() => setEditJa(null)}
-                />
+                <JaEditForm contract={editJa} onChange={setEditJa} onSave={() => saveJa(editJa)} onCancel={() => setEditJa(null)} />
               ) : (
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                     <div>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "#15803d" }}>{c.name}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#10b981" }}>{c.name}</span>
                       <Tag src="JA"/>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => setEditJa({ ...c })} style={{ background: "#f1f5f9", border: "none", color: C.text, borderRadius: 6, padding: "4px 10px", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>編集</button>
-                      <button onClick={() => archiveJa(c.id)} style={{ background: "#f1f5f9", border: "none", color: C.muted, borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>
+                      <button onClick={() => setEditJa({ ...c })} style={{ background: isDark ? "#1e2d45" : "#f1f5f9", border: "none", color: C.text, borderRadius: 6, padding: "4px 10px", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>編集</button>
+                      <button onClick={() => archiveJa(c.id)} style={{ background: isDark ? "#1e2d45" : "#f1f5f9", border: "none", color: C.muted, borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>
                         {c.archived ? "復元" : "アーカイブ"}
                       </button>
                     </div>
@@ -800,11 +851,11 @@ export default function Dashboard() {
                     ))}
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, background: "#f8fafc", borderRadius: 10, padding: "10px", marginBottom: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, background: isDark ? "#16253b" : "#f8fafc", borderRadius: 10, padding: "10px", marginBottom: 12 }}>
                     {[
-                      { label:"払込累計（元本）", value:fmt(c.cost),  color:C.muted },
+                      { label:"払込元本", value:fmt(c.cost),  color:C.muted },
                       { label:"計算評価額",       value:fmt(c.value), color:C.text },
-                      { label:"含み損益",           value:`${sgn(c.pnl)}${fmt(c.pnl)}`, color:pnlClr(c.pnl) },
+                      { label:"含み益",           value:`${sgn(c.pnl)}${fmt(c.pnl)}`, color:pnlClr(c.pnl) },
                     ].map(({ label, value, color }) => (
                       <div key={label} style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>{label}</div>
@@ -813,7 +864,7 @@ export default function Dashboard() {
                     ))}
                   </div>
 
-                  <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 14px", marginBottom: 12 }}>
+                  <div style={{ background: isDark ? "#0d2030" : "#eff6ff", border: `1px solid ${isDark ? "#1e3a5f" : "#bfdbfe"}`, borderRadius: 10, padding: "10px 14px", marginBottom: 12 }}>
                     <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 600 }}>年金受取予定</div>
                     <div style={{ fontSize: 13, color: C.text, fontWeight: 500 }}>
                       {c.annuityStartYear}〜{c.annuityEndYear}年 ｜ 年額
@@ -826,7 +877,7 @@ export default function Dashboard() {
                   </div>
 
                   {c.notes && (
-                    <pre style={{ fontSize: 11, color: C.muted, margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.6, background: "#f8fafc", padding: "10px", borderRadius: 8, border: `1px solid ${C.line}` }}>
+                    <pre style={{ fontSize: 11, color: C.muted, margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.6, background: isDark ? "#16253b" : "#f8fafc", padding: "10px", borderRadius: 8, border: `1px solid ${C.line}` }}>
                       {c.notes}
                     </pre>
                   )}
@@ -834,7 +885,6 @@ export default function Dashboard() {
               )}
             </div>
           ))}
-
           {addMode && <JaAddForm onAdd={addJa} onCancel={() => setAddMode(false)}/>}
         </div>
       )}
@@ -863,7 +913,7 @@ export default function Dashboard() {
 
       {/* ── フッター ── */}
       <div style={{ marginTop: 24, fontSize: 11, color: C.muted, textAlign: "center", borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
-        岡野ファミリー 資産管理 v3.0 ｜ {DATA_DATE} ｜ 次回自動取得: 平日 UTC 01:00
+        岡野ファミリー 資産管理 v3.0 ｜ {DATA_DATE}
       </div>
     </div>
   );
