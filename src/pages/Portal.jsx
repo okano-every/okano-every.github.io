@@ -1,24 +1,70 @@
 /**
  * 岡野ファミリー Apps ポータル
- * 全アプリへの入口ページ (Plan A: ウェルスナビ風 クリーン・ライト)
+ * 全アプリへの入口ページ (Plan A: ウェルスナビ風 ミニマルアイコン版)
  */
 
 const C = {
-  bg: "#f8fafc",      // 清潔感のある青みのあるライトグレー
+  bg: "#f8fafc",      // 清潔感のあるライトグレー
   card: "#ffffff",    // 純白のカード
   line: "#e2e8f0",    // スッキリとした薄い境界線
-  text: "#0f172a",    // 洗練されたメイン文字（ネイビーブラック）
-  muted: "#64748b",   // 控えめなラベル文字（チャコールグレー）
-  acc: "#0052cc",     // ウェルスナビ風の上品なコーポレートブルー
-  green: "#0284c7",   // 利益・ポジティブカラー（爽やかなシアンブルー）
-  amber: "#b45309",   // 準備中など（ライト背景で視認性の高いアンバー）
-  purple: "#7c3aed",  // 教育費など（深みのあるパープル）
+  text: "#0f172a",    // ネイビーブラック
+  muted: "#64748b",   // チャコールグレー
+  acc: "#0052cc",     // コーポレートブルー
+  green: "#0284c7",   // シアンブルー
+  amber: "#b45309",   // 視認性の高いアンバー
+  purple: "#7c3aed",  // 深みのあるパープル
+};
+
+// ミニマルなインラインSVGアイコンコンポーネント
+const Icons = {
+  dashboard: (color) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="9" />
+      <rect x="14" y="3" width="7" height="5" />
+      <rect x="14" y="12" width="7" height="9" />
+      <rect x="3" y="16" width="7" height="5" />
+    </svg>
+  ),
+  fx: (color) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+      <path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5.5z" />
+    </svg>
+  ),
+  crypto: (color) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="8" />
+      <line x1="12" y1="8" x2="12" y2="16" />
+      <line x1="12" y1="12" x2="16" y2="12" />
+    </svg>
+  ),
+  education: (color) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+      <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
+    </svg>
+  ),
+  networth: (color) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  ),
+  report: (color) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  ),
 };
 
 const APPS = [
   {
     id:    "dashboard",
-    icon:  "💼",
+    icon:  "dashboard",
     name:  "資産ダッシュボード",
     desc:  "家族全員の資産を一元管理。推移グラフ・目標進捗",
     path:  "/dashboard",
@@ -27,7 +73,7 @@ const APPS = [
   },
   {
     id:    "fx",
-    icon:  "💱",
+    icon:  "fx",
     name:  "FXトラッカー",
     desc:  "HFM / Exness / XM 取引履歴・損益・残高推移（2023-06〜）",
     path:  "/fx",
@@ -36,7 +82,7 @@ const APPS = [
   },
   {
     id:    "crypto",
-    icon:  "🪙",
+    icon:  "crypto",
     name:  "暗号資産",
     desc:  "保有コイン・評価額の管理",
     path:  "/crypto",
@@ -45,7 +91,7 @@ const APPS = [
   },
   {
     id:    "education",
-    icon:  "🎓",
+    icon:  "education",
     name:  "教育費カレンダー",
     desc:  "子供3人の進学タイムライン・費用計画",
     path:  "/education",
@@ -54,7 +100,7 @@ const APPS = [
   },
   {
     id:    "networth",
-    icon:  "🏠",
+    icon:  "networth",
     name:  "純資産サマリー",
     desc:  "不動産・退職金を含む総資産見通し",
     path:  "/networth",
@@ -63,7 +109,7 @@ const APPS = [
   },
   {
     id:    "report",
-    icon:  "📋",
+    icon:  "report",
     name:  "月次レポート",
     desc:  "月末自動生成レポート・AI分析",
     path:  "/report",
@@ -84,7 +130,6 @@ function getLastUpdated() {
 }
 
 export default function Portal() {
-  // react-router-dom 不使用 → window.location で遷移
   const navigate    = (path) => { window.location.href = path; };
   const lastUpdated = getLastUpdated();
   const now         = new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
@@ -151,14 +196,16 @@ export default function Portal() {
               e.currentTarget.style.borderColor = C.line;
             }}
           >
+            {/* ミニマルSVGアイコンコンテナ */}
             <div style={{
-              fontSize: 24, marginBottom: 14,
-              width: 48, height: 48, borderRadius: 12,
-              background: app.color + "12",
+              marginBottom: 14,
+              width: 44, height: 44, borderRadius: 12,
+              background: app.color + "0d", // さらに薄くして上品に
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              {app.icon}
+              {Icons[app.icon](app.color)}
             </div>
+            
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: C.text }}>
               {app.name}
             </div>
