@@ -48,7 +48,7 @@ const PL_GROUPS = {
 const PL_COLORS = { HFM: "#0052cc", Exness: "#0284c7", XM: "#7c3aed" };
 
 // ─────────────────────────────────────────────────────────────────
-// DYNAMIC STYLES (テーマカラーに完全連動する動的スタイル生成)
+// DYNAMIC STYLES
 // ─────────────────────────────────────────────────────────────────
 const getStyles = (C) => ({
   page:   { background: C.bg, minHeight: "100vh", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", fontSize: 13, color: C.text, transition: "background 0.3s, color 0.3s" },
@@ -313,10 +313,10 @@ function ChartTab({ metric, setMetric, themeColors, isDark, S }) {
   return (
     <div style={S.card}>
       <div style={S.frow}>
-        <div style={S.seg}>
-          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="balance" ? (isDark ? "#1e2d45" : "#fff") : "transparent", color: themeColors.text, fontWeight: metric==="balance" ? 600 : 400 }} onClick={() => setMetric("balance")}>残高</button>
-          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="equity" ? (isDark ? "#1e2d45" : "#fff") : "transparent", color: themeColors.text, fontWeight: metric==="equity" ? 600 : 400 }} onClick={() => setMetric("equity")}>Equity</button>
-          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="closed_pl" ? (isDark ? "#1e2d45" : "#fff") : "transparent", color: themeColors.text, fontWeight: metric==="closed_pl" ? 600 : 400 }} onClick={() => setMetric("closed_pl")}>月次P/L</button>
+        <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
+          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="balance" ? "#fff" : "transparent", color: metric==="balance" ? "#0f172a" : themeColors.muted, fontWeight: metric==="balance" ? 600 : 400 }} onClick={() => setMetric("balance")}>残高</button>
+          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="equity" ? "#fff" : "transparent", color: metric==="equity" ? "#0f172a" : themeColors.muted, fontWeight: metric==="equity" ? 600 : 400 }} onClick={() => setMetric("equity")}>Equity</button>
+          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="closed_pl" ? "#fff" : "transparent", color: metric==="closed_pl" ? "#0f172a" : themeColors.muted, fontWeight: metric==="closed_pl" ? 600 : 400 }} onClick={() => setMetric("closed_pl")}>月次P/L</button>
         </div>
         <span style={{ fontSize: 11, color: themeColors.muted, marginLeft: "auto", fontWeight: 500 }}>最新 (2026-05): <strong style={{color: themeColors.text, fontFamily:"monospace"}}>{fmt(latest)}</strong></span>
       </div>
@@ -476,15 +476,16 @@ export default function FXDashboard() {
   return (
     <div style={S.page}>
       
-      {/* ── スマホ画面上部の押し下げ用アクセントバー ＋ 切り替えスイッチ ── */}
+      {/* ── スマホ画面上部の押し下げ用アクセントバー（高さを2.5倍の90pxに拡張＆ボタン位置調整） ── */}
       <div style={{ 
         background: themeColors.acc, 
         height: "90px", 
         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-end",       // ボタンを下側に配置して親指を届きやすく
         justifyContent: "flex-end",
-        padding: "0 16px"
+        padding: "0 16px 14px 16px",  // 下部に程よいマージン
+        boxSizing: "border-box"
       }}>
         <button 
           onClick={toggleTheme}
@@ -493,14 +494,15 @@ export default function FXDashboard() {
             border: "none",
             borderRadius: "20px",
             color: "#fff",
-            padding: "4px 12px",
-            fontSize: "11px",
-            fontWeight: "600",
+            padding: "6px 16px",        // タップ領域を広げて押しやすく
+            fontSize: "12px",
+            fontWeight: "700",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             gap: "4px",
-            outline: "none"
+            outline: "none",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
           }}
         >
           {isDark ? "☀️ LIGHT" : "🌙 DARK"}
@@ -508,7 +510,7 @@ export default function FXDashboard() {
       </div>
 
       {/* ── ヘッダー ── */}
-      <div style={{ background: themeColors.card, borderBottom: `1px solid ${themeColors.line}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
+      <div style={{ background: themeColors.card, borderBottom: `1px solid ${themeColors.line}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyValue: "space-between", flexWrap: "wrap", gap: 10, boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
             onClick={() => window.history.back()}
@@ -563,7 +565,7 @@ export default function FXDashboard() {
 }
 
 // ================================================================
-// テーマカラー動的定義 (動的パレット取得用)
+// テーマカラー動的定義
 // ================================================================
 const getColors = (isDark) => ({
   bg: isDark ? "#0a0f1a" : "#f8fafc",
@@ -571,9 +573,9 @@ const getColors = (isDark) => ({
   line: isDark ? "#1e2d45" : "#e2e8f0",
   text: isDark ? "#e2e8f0" : "#0f172a",
   muted: isDark ? "#4a6080" : "#64748b",
-  acc: "#0052cc",     // コーポレートブルー
-  green: "#0284c7",   // 利益シアンブルー
+  acc: "#0052cc",
+  green: "#0284c7",
   amber: isDark ? "#f59e0b" : "#b45309",
-  red: "#ea580c",     // 損失オレンジ
+  red: "#ea580c",
   purple: isDark ? "#a78bfa" : "#7c3aed",
 });

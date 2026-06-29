@@ -269,7 +269,7 @@ const TAB_LB = {
   banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金", missing:"⚠️ 未連携",
 };
 
-let C;
+let C = getColors(false); // 初期値: ライトモード（レンダー前のundefined回避）
 
 export default function Dashboard() {
   const [tab,     setTab]     = useState("summary");
@@ -885,19 +885,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-// ================================================================
-// テーマカラー動的定義
-// ================================================================
-const getColors = (isDark) => ({
-  bg: isDark ? "#0a0f1a" : "#f8fafc",
-  card: isDark ? "#121c2e" : "#ffffff",
-  line: isDark ? "#1e2d45" : "#e2e8f0",
-  text: isDark ? "#e2e8f0" : "#0f172a",
-  muted: isDark ? "#4a6080" : "#64748b",
-  acc: "#0052cc",
-  green: "#0284c7",
-  amber: isDark ? "#f59e0b" : "#b45309",
-  red: "#ea580c",
-  purple: isDark ? "#a78bfa" : "#7c3aed",
-});
