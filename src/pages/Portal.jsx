@@ -25,10 +25,10 @@ const APPS = [
     id:    "fx",
     icon:  "💱",
     name:  "FXトラッカー",
-    desc:  "XM Trading / EXNESS の評価額・損益",
+    desc:  "HFM / Exness / XM 取引履歴・損益・残高推移（2023-06〜）",
     path:  "/fx",
     color: C.green,
-    ready: false,
+    ready: true,   // ← 変更: false → true
   },
   {
     id:    "crypto",

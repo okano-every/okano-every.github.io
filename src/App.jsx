@@ -1,16 +1,18 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import Portal from './pages/Portal'
-import Dashboard from './pages/Dashboard'
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Portal      from "./pages/Portal";
+import Dashboard   from "./pages/Dashboard";
+import FXDashboard from "./pages/FXDashboard";
 
-function App() {
+export default function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Portal />} />
+        <Route path="/"          element={<Portal />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/fx"        element={<FXDashboard />} />
+        {/* 今後のアプリをここに追加 */}
+        {/* <Route path="/education" element={<Education />} /> */}
       </Routes>
-    </Router>
-  )
+    </BrowserRouter>
+  );
 }
-
-export default App
