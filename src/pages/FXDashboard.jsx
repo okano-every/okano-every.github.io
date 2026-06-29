@@ -479,7 +479,7 @@ export default function FXDashboard() {
       {/* ── スマホ画面上部の押し下げ用アクセントバー ＋ 切り替えスイッチ ── */}
       <div style={{ 
         background: themeColors.acc, 
-        height: "36px", 
+        height: "90px", 
         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
         display: "flex",
         alignItems: "center",
