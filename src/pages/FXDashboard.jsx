@@ -48,18 +48,45 @@ const PL_GROUPS = {
 const PL_COLORS = { HFM: "#0052cc", Exness: "#0284c7", XM: "#7c3aed" };
 
 // ─────────────────────────────────────────────────────────────────
+// DYNAMIC STYLES (テーマカラーに完全連動する動的スタイル生成)
+// ─────────────────────────────────────────────────────────────────
+const getStyles = (C) => ({
+  page:   { background: C.bg, minHeight: "100vh", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", fontSize: 13, color: C.text, transition: "background 0.3s, color 0.3s" },
+  hdr:    { background: C.card, borderBottom: `1px solid ${C.line}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, boxShadow: "0 1px 2px rgba(0,0,0,0.02)" },
+  tabs:   { display: "flex", gap: 8, padding: "12px 20px 4px", overflowX: "auto", borderBottom: `1px solid ${C.line}`, background: C.card },
+  card:   { background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.02)" },
+  cttl:   { fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 },
+  grid2:  { display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10 },
+  met:    { background: C.bg, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" },
+  mL:     { fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 },
+  mV:     { fontSize: 16, fontWeight: 800, fontFamily: "monospace", color: C.text },
+  mS:     { fontSize: 10, color: C.muted, fontWeight: 400 },
+  row:    { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.line}` },
+  rl:     { color: C.muted },
+  rv:     { fontFamily: "monospace", color: C.text },
+  seg:    { display: "flex", background: C.bg, borderRadius: 8, padding: 2, gap: 2, width: "fit-content" },
+  sel:    { fontSize: 11, padding: "5px 8px", borderRadius: 8, border: `1px solid ${C.line}`, background: C.card, color: C.text, fontFamily: "inherit", cursor: "pointer" },
+  tbl:    { width: "100%", borderCollapse: "collapse", fontSize: 11 },
+  th:     { textAlign: "left", padding: "10px 8px", color: C.muted, fontWeight: 600, borderBottom: `2px solid ${C.line}`, whiteSpace: "nowrap" },
+  thR:    { textAlign: "right", padding: "10px 8px", color: C.muted, fontWeight: 600, borderBottom: `2px solid ${C.line}`, whiteSpace: "nowrap" },
+  tdN:    { padding: "10px 8px", borderBottom: `1px solid ${C.line}`, whiteSpace: "nowrap", color: C.text },
+  tdR:    { padding: "10px 8px", borderBottom: `1px solid ${C.line}`, fontFamily: "monospace", textAlign: "right", whiteSpace: "nowrap", color: C.text },
+  frow:   { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 },
+});
+
+// ─────────────────────────────────────────────────────────────────
 // SUB-COMPONENTS
 // ─────────────────────────────────────────────────────────────────
-function MetCard({ label, value, unit = "円", themeColors }) {
+function MetCard({ label, value, unit = "円", themeColors, S }) {
   return (
-    <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 12, padding: "12px 14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-      <div style={{ fontSize: 11, color: themeColors.muted, marginBottom: 4, fontWeight: 500 }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 800, fontFamily: "monospace", color: themeColors.text }}>{value}<span style={{ fontSize: 10, color: themeColors.muted, fontWeight: 400 }}> {unit}</span></div>
+    <div style={S.met}>
+      <div style={S.mL}>{label}</div>
+      <div style={S.mV}>{value}<span style={S.mS}> {unit}</span></div>
     </div>
   );
 }
 
-function SummaryTab({ sumMode, setSumMode, sumMonth, setSumMonth, sumYear, setSumYear, themeColors, isDark }) {
+function SummaryTab({ sumMode, setSumMode, sumMonth, setSumMonth, sumYear, setSumYear, themeColors, isDark, S }) {
   const pnlClr = (n) => (n >= 0 ? themeColors.green : themeColors.red);
 
   if (sumMode === "month") {
@@ -69,37 +96,38 @@ function SummaryTab({ sumMode, setSumMode, sumMonth, setSumMonth, sumYear, setSu
     const zero   = RAW.filter(d => d.ym === sumMonth && (d.balance||0) === 0 && (d.equity||0) === 0);
     return (
       <div>
-        <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 16, padding: 16, marginBottom: 12 }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
-              <button style={{ padding: "5px 14px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: "#ffffff", color: "#0f172a", fontWeight: 600, boxShadow: "0 1px 3px rgba(0,0,0,.1)" }} onClick={() => setSumMode("month")}>月別</button>
+        <div style={S.card}>
+          <div style={S.frow}>
+            <div style={S.seg}>
+              <button style={{ padding: "5px 14px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: isDark ? "#1e2d45" : "#ffffff", color: themeColors.text, fontWeight: 600, boxShadow: isDark ? "none" : "0 1px 3px rgba(0,0,0,.1)" }} onClick={() => setSumMode("month")}>月別</button>
               <button style={{ padding: "5px 14px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: "transparent", color: themeColors.muted }} onClick={() => setSumMode("year")}>年別</button>
             </div>
-            <select style={{ fontSize: 12, padding: "6px 10px", borderRadius: 8, border: `1px solid ${themeColors.line}`, background: themeColors.card, color: themeColors.text, cursor: "pointer" }} value={sumMonth} onChange={e => setSumMonth(e.target.value)}>
+            <select style={S.sel} value={sumMonth} onChange={e => setSumMonth(e.target.value)}>
               {MONTHS.slice().reverse().map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
         </div>
-
-        <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 16, padding: 16, marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: themeColors.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>{sumMonth} 月末合計</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10 }}>
-            <MetCard label="実質残高" value={fmt(tot.balance)} themeColors={themeColors} />
-            <MetCard label="Equity"  value={fmt(tot.equity)} themeColors={themeColors} />
-            <MetCard label="クレジット" value={fmt(tot.credit)} themeColors={themeColors} />
-            <MetCard label="月次確定P/L" value={fmtPL(tot.pl)} themeColors={themeColors} />
+        <div style={S.card}>
+          <div style={S.cttl}>{sumMonth} 月末合計</div>
+          <div style={S.grid2}>
+            <MetCard label="実質残高" value={fmt(tot.balance)} themeColors={themeColors} S={S} />
+            <MetCard label="Equity"  value={fmt(tot.equity)} themeColors={themeColors} S={S} />
+            <MetCard label="クレジット" value={fmt(tot.credit)} themeColors={themeColors} S={S} />
+            <div style={S.met}>
+              <div style={S.mL}>月次確定P/L</div>
+              <div style={{ ...S.mV, color: pnlClr(tot.pl) }}>{fmtPL(tot.pl)}<span style={S.mS}> 円</span></div>
+            </div>
           </div>
         </div>
-
         {active.length > 0 && (
-          <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 16, padding: 16, marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: themeColors.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>口座別（{active.length}）</div>
+          <div style={S.card}>
+            <div style={S.cttl}>口座別（{active.length}）</div>
             {active.map(d => {
               const k = `${d.broker}|${d.ac}`; const cfg = getCfg(k);
               return (
-                <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${themeColors.line}`, borderLeft: `4px solid ${cfg.color}`, paddingLeft: 10, margin: "4px 0" }}>
+                <div key={k} style={{ ...S.row, borderLeft: `4px solid ${cfg.color}`, paddingLeft: 10, margin: "4px 0" }}>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: themeColors.text }}>{cfg.label} <span style={{ color: themeColors.muted, fontWeight: 400, fontSize: 11 }}>A/C {d.ac}</span></div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: themeColors.text }}><span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: cfg.color, marginRight: 6, verticalAlign: "middle" }}/>{cfg.label} <span style={{ color: themeColors.muted, fontWeight: 400, fontSize: 11 }}>A/C {d.ac}</span></div>
                     <div style={{ fontSize: 11, color: themeColors.muted, marginTop: 2 }}>{d.broker} ｜ 取引{d.trades}件</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
@@ -112,14 +140,13 @@ function SummaryTab({ sumMode, setSumMode, sumMonth, setSumMonth, sumYear, setSu
             })}
           </div>
         )}
-
         {zero.length > 0 && (
-          <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 16, padding: 16, marginBottom: 12, opacity: 0.5 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: themeColors.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>残高ゼロ / 休眠（{zero.length}）</div>
+          <div style={{ ...S.card, opacity: 0.5 }}>
+            <div style={S.cttl}>残高ゼロ / 休眠（{zero.length}）</div>
             {zero.map(d => (
-              <div key={`${d.broker}|${d.ac}`} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 12 }}>
-                <span style={{ color: themeColors.muted }}>{d.broker} {d.ac}</span>
-                <span style={{ fontFamily: "monospace", color: themeColors.text }}>0</span>
+              <div key={`${d.broker}|${d.ac}`} style={S.row}>
+                <span style={S.rl}>{d.broker} {d.ac}</span>
+                <span style={S.rv}>0</span>
               </div>
             ))}
           </div>
@@ -143,7 +170,7 @@ function SummaryTab({ sumMode, setSumMode, sumMonth, setSumMonth, sumYear, setSu
 
   return (
     <div>
-      <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 16, padding: 16, marginBottom: 12 }}>
+      <div style={S.card}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
             <button style={{ padding: "5px 14px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: "transparent", color: themeColors.muted }} onClick={() => setSumMode("month")}>月別</button>
@@ -155,29 +182,35 @@ function SummaryTab({ sumMode, setSumMode, sumMonth, setSumMonth, sumYear, setSu
         </div>
       </div>
 
-      <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 16, padding: 16, marginBottom: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: themeColors.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>{sumYear}年（{yMths.length}ヶ月 / 最終: {endMth}）</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10 }}>
-          <MetCard label="期末実質残高" value={fmt(endBal)} themeColors={themeColors} />
-          <MetCard label="期末Equity"  value={fmt(endEq)} themeColors={themeColors} />
-          <MetCard label="年間確定P/L" value={fmtPL(annPL)} themeColors={themeColors} color={pnlClr(annPL)} />
-          <MetCard label="年間入出金"  value={fmtPL(annDW)} themeColors={themeColors} color={pnlClr(annDW)} />
-          <MetCard label="期末クレジット" value={fmt(endCr)} themeColors={themeColors} />
-          <MetCard label="年間取引件数" value={annT.toLocaleString()} unit="件" themeColors={themeColors} />
+      <div style={S.card}>
+        <div style={S.cttl}>{sumYear}年（{yMths.length}ヶ月 / 最終: {endMth}）</div>
+        <div style={S.grid2}>
+          <MetCard label="期末実質残高" value={fmt(endBal)} themeColors={themeColors} S={S} />
+          <MetCard label="期末Equity"  value={fmt(endEq)} themeColors={themeColors} S={S} />
+          <div style={S.met}>
+            <div style={S.mL}>年間確定P/L</div>
+            <div style={{ ...S.mV, color: pnlClr(annPL) }}>{fmtPL(annPL)}<span style={S.mS}> 円</span></div>
+          </div>
+          <div style={S.met}>
+            <div style={S.mL}>年間入出金</div>
+            <div style={{ ...S.mV, color: pnlClr(annDW) }}>{fmtPL(annDW)}<span style={S.mS}> 円</span></div>
+          </div>
+          <MetCard label="期末クレジット" value={fmt(endCr)} themeColors={themeColors} S={S} />
+          <MetCard label="年間取引件数" value={annT.toLocaleString()} unit="件" themeColors={themeColors} S={S} />
         </div>
       </div>
 
-      <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 16, padding: 16, marginBottom: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: themeColors.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>{sumYear}年 月次推移</div>
+      <div style={S.card}>
+        <div style={S.cttl}>{sumYear}年 月次推移</div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <table style={S.tbl}>
             <thead>
               <tr>
-                <th style={{ textAlign: "left", padding: "8px", color: themeColors.muted, borderBottom: `2px solid ${themeColors.line}` }}>月</th>
-                <th style={{ textAlign: "right", padding: "8px", color: themeColors.muted, borderBottom: `2px solid ${themeColors.line}` }}>実質残高合計</th>
-                <th style={{ textAlign: "right", padding: "8px", color: themeColors.muted, borderBottom: `2px solid ${themeColors.line}` }}>Equity合計</th>
-                <th style={{ textAlign: "right", padding: "8px", color: themeColors.muted, borderBottom: `2px solid ${themeColors.line}` }}>月次P/L</th>
-                <th style={{ textAlign: "right", padding: "8px", color: themeColors.muted, borderBottom: `2px solid ${themeColors.line}` }}>取引数</th>
+                <th style={S.th}>月</th>
+                <th style={S.thR}>実質残高合計</th>
+                <th style={{ ...S.thR, whiteSpace: "nowrap" }}>Equity合計</th>
+                <th style={S.thR}>月次P/L</th>
+                <th style={S.thR}>取引数</th>
               </tr>
             </thead>
             <tbody>
@@ -185,11 +218,11 @@ function SummaryTab({ sumMode, setSumMode, sumMonth, setSumMonth, sumYear, setSu
                 const t = totals(RAW.filter(d => d.ym === ym)); 
                 return (
                   <tr key={ym} style={{ borderBottom: `1px solid ${themeColors.line}` }}>
-                    <td style={{ padding: "8px", color: themeColors.text }}>{ym}</td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", color: themeColors.text }}>{fmt(t.balance)}</td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", color: themeColors.text }}>{fmt(t.equity)}</td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: pnlClr(t.pl) }}>{fmtPL(t.pl)}</td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", color: themeColors.text }}>{t.trades}</td>
+                    <td style={S.tdN}>{ym}</td>
+                    <td style={S.tdR}>{fmt(t.balance)}</td>
+                    <td style={S.tdR}>{fmt(t.equity)}</td>
+                    <td style={{ ...S.tdR, fontWeight: 700, color: pnlClr(t.pl) }}>{fmtPL(t.pl)}</td>
+                    <td style={S.tdR}>{t.trades}</td>
                   </tr>
                 ); 
               })}
@@ -198,16 +231,16 @@ function SummaryTab({ sumMode, setSumMode, sumMonth, setSumMonth, sumYear, setSu
         </div>
       </div>
 
-      <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 16, padding: 16, marginBottom: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: themeColors.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>ブローカー別 年間集計</div>
+      <div style={S.card}>
+        <div style={S.cttl}>ブローカー別 年間集計</div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <table style={S.tbl}>
             <thead>
               <tr>
-                <th style={{ textAlign: "left", padding: "8px", color: themeColors.muted, borderBottom: `2px solid ${themeColors.line}` }}>ブローカー</th>
-                <th style={{ textAlign: "right", padding: "8px", color: themeColors.muted, borderBottom: `2px solid ${themeColors.line}` }}>年間確定P/L</th>
-                <th style={{ textAlign: "right", padding: "8px", color: themeColors.muted, borderBottom: `2px solid ${themeColors.line}` }}>取引件数</th>
-                <th style={{ textAlign: "right", padding: "8px", color: themeColors.muted, borderBottom: `2px solid ${themeColors.line}` }}>期末残高</th>
+                <th style={S.th}>ブローカー</th>
+                <th style={S.thR}>年間確定P/L</th>
+                <th style={S.thR}>取引件数</th>
+                <th style={S.thR}>期末残高</th>
               </tr>
             </thead>
             <tbody>
@@ -218,10 +251,10 @@ function SummaryTab({ sumMode, setSumMode, sumMonth, setSumMonth, sumYear, setSu
                 const bE  = RAW.filter(d => d.ym === endMth && d.broker === b).reduce((s, d) => s + (d.balance||0), 0);
                 return (
                   <tr key={b} style={{ borderBottom: `1px solid ${themeColors.line}` }}>
-                    <td style={{ padding: "8px", fontWeight: 600, color: themeColors.text }}>{b}</td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: pnlClr(bPL) }}>{fmtPL(bPL)}</td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", color: themeColors.text }}>{bT}</td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", color: themeColors.text }}>{fmt(bE)}</td>
+                    <td style={{ ...S.tdN, fontWeight: 600 }}>{b}</td>
+                    <td style={{ ...S.tdR, fontWeight: 700, color: pnlClr(bPL) }}>{fmtPL(bPL)}</td>
+                    <td style={S.tdR}>{bT}</td>
+                    <td style={S.tdR}>{fmt(bE)}</td>
                   </tr>
                 );
               })}
@@ -233,7 +266,7 @@ function SummaryTab({ sumMode, setSumMode, sumMonth, setSumMonth, sumYear, setSu
   );
 }
 
-function ChartTab({ metric, setMetric, themeColors, isDark }) {
+function ChartTab({ metric, setMetric, themeColors, isDark, S }) {
   const chartRef  = useRef(null);
   const chartInst = useRef(null);
 
@@ -241,7 +274,6 @@ function ChartTab({ metric, setMetric, themeColors, isDark }) {
     if (!chartRef.current) return;
     if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; }
     
-    // 現在のテーマ設定からChart.js用の文字色・グリッド色を設定
     const textClr = isDark ? "#94a3b8" : "#64748b";
     const gridClr = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
 
@@ -279,12 +311,12 @@ function ChartTab({ metric, setMetric, themeColors, isDark }) {
 
   const latest = MONTHS.includes("2026-05") ? RAW.filter(d => d.ym === "2026-05").reduce((s, d) => s + (d[metric]||0), 0) : 0;
   return (
-    <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 16, padding: 16, marginBottom: 12 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }}>
-        <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
-          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="balance" ? "#fff" : "transparent", color: metric==="balance" ? "#0f172a" : themeColors.muted, fontWeight: metric==="balance" ? 600 : 400 }} onClick={() => setMetric("balance")}>残高</button>
-          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="equity" ? "#fff" : "transparent", color: metric==="equity" ? "#0f172a" : themeColors.muted, fontWeight: metric==="equity" ? 600 : 400 }} onClick={() => setMetric("equity")}>Equity</button>
-          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="closed_pl" ? "#fff" : "transparent", color: metric==="closed_pl" ? "#0f172a" : themeColors.muted, fontWeight: metric==="closed_pl" ? 600 : 400 }} onClick={() => setMetric("closed_pl")}>月次P/L</button>
+    <div style={S.card}>
+      <div style={S.frow}>
+        <div style={S.seg}>
+          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="balance" ? (isDark ? "#1e2d45" : "#fff") : "transparent", color: themeColors.text, fontWeight: metric==="balance" ? 600 : 400 }} onClick={() => setMetric("balance")}>残高</button>
+          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="equity" ? (isDark ? "#1e2d45" : "#fff") : "transparent", color: themeColors.text, fontWeight: metric==="equity" ? 600 : 400 }} onClick={() => setMetric("equity")}>Equity</button>
+          <button style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: metric==="closed_pl" ? (isDark ? "#1e2d45" : "#fff") : "transparent", color: themeColors.text, fontWeight: metric==="closed_pl" ? 600 : 400 }} onClick={() => setMetric("closed_pl")}>月次P/L</button>
         </div>
         <span style={{ fontSize: 11, color: themeColors.muted, marginLeft: "auto", fontWeight: 500 }}>最新 (2026-05): <strong style={{color: themeColors.text, fontFamily:"monospace"}}>{fmt(latest)}</strong></span>
       </div>
@@ -295,7 +327,7 @@ function ChartTab({ metric, setMetric, themeColors, isDark }) {
   );
 }
 
-function PLTab({ themeColors, isDark }) {
+function PLTab({ themeColors, isDark, S }) {
   const chartRef  = useRef(null);
   const chartInst = useRef(null);
   const mths = MONTHS.slice(-24);
@@ -339,14 +371,14 @@ function PLTab({ themeColors, isDark }) {
   }, [isDark]);
 
   return (
-    <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 16, padding: 16, marginBottom: 12 }}>
+    <div style={S.card}>
       <p style={{ fontSize: 11, color: themeColors.muted, marginBottom: 12, fontWeight: 500 }}>直近24ヶ月 月次確定P/L（ブローカー積み上げ）</p>
       <div style={{ position: "relative", height: 300 }}><canvas ref={chartRef} /></div>
     </div>
   );
 }
 
-function TableTab({ themeColors, isDark }) {
+function TableTab({ themeColors, isDark, S }) {
   const [fb, setFb] = useState("all");
   const [fz, setFz] = useState(false);
   
@@ -361,8 +393,8 @@ function TableTab({ themeColors, isDark }) {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-        <select style={{ fontSize: 12, padding: "6px 10px", borderRadius: 8, border: `1px solid ${themeColors.line}`, background: themeColors.card, color: themeColors.text, cursor: "pointer" }} value={fb} onChange={e => setFb(e.target.value)}>
+      <div style={S.frow}>
+        <select style={S.sel} value={fb} onChange={e => setFb(e.target.value)}>
           <option value="all">全ブローカー</option>
           {BROKERS.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
@@ -371,13 +403,13 @@ function TableTab({ themeColors, isDark }) {
         </label>
       </div>
 
-      <div style={{ background: themeColors.card, border: `1px solid ${themeColors.line}`, borderRadius: 16, padding: 0, overflow: "hidden", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.02)" }}>
+      <div style={{ ...S.card, padding: 0, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <table style={S.tbl}>
             <thead>
               <tr style={{ borderBottom: `2px solid ${themeColors.line}` }}>
-                {["年月","口座","A/C No"].map(h => <th key={h} style={{ textAlign: "left", padding: "10px 8px", color: themeColors.muted, fontWeight: 600 }}>{h}</th>)}
-                {["実質残高","Equity","Credit","確定P/L","入出金","取引数"].map(h => <th key={h} style={{ textAlign: "right", padding: "10px 8px", color: themeColors.muted, fontWeight: 600 }}>{h}</th>)}
+                {["年月","口座","A/C No"].map(h => <th key={h} style={S.th}>{h}</th>)}
+                {["実質残高","Equity","Credit","確定P/L","入出金","取引数"].map(h => <th key={h} style={S.thR}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -386,16 +418,16 @@ function TableTab({ themeColors, isDark }) {
                 const gain = d.closed_pl || 0;
                 const dw = d.dep_wd || 0;
                 return (
-                  <tr key={`${d.ym}-${k}`} style={{ borderBottom: `1px solid ${themeColors.line}` }}>
+                  <tr key={`${d.ym}-${k}`} style={{ borderBottom: `1px solid ${themeColors.line}` }} onMouseEnter={e=>e.currentTarget.style.background=isDark ? "#1e2d45" : "#f1f5f9"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                     <td style={{ padding: "10px 8px", color: themeColors.text }}>{d.ym}</td>
                     <td style={{ padding: "10px 8px", color: themeColors.text, fontWeight: 600 }}><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: cfg.color, marginRight: 6 }}/>{cfg.label}</td>
                     <td style={{ padding: "10px 8px", fontSize: 11, color: themeColors.muted }}>{d.ac}</td>
-                    <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: themeColors.text, fontWeight: 500 }}>{fmt(d.balance)}</td>
-                    <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: themeColors.text }}>{fmt(d.equity)}</td>
-                    <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: themeColors.muted }}>{d.credit > 0 ? fmt(d.credit) : "-"}</td>
-                    <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: pnlClr(gain), fontWeight: 700 }}>{gain !== 0 ? fmtPL(gain) : "-"}</td>
-                    <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: dw > 0 ? themeColors.green : dw < 0 ? themeColors.red : themeColors.muted }}>{dw !== 0 ? fmtPL(dw) : "-"}</td>
-                    <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: themeColors.text }}>{d.trades > 0 ? d.trades : "-"}</td>
+                    <td style={S.tdR}>{fmt(d.balance)}</td>
+                    <td style={S.tdR}>{fmt(d.equity)}</td>
+                    <td style={{ ...S.tdR, color: themeColors.muted }}>{d.credit > 0 ? fmt(d.credit) : "-"}</td>
+                    <td style={{ ...S.tdR, color: pnlClr(gain), fontWeight: 700 }}>{gain !== 0 ? fmtPL(gain) : "-"}</td>
+                    <td style={{ ...S.tdR, color: dw > 0 ? themeColors.green : dw < 0 ? themeColors.red : themeColors.muted }}>{dw !== 0 ? fmtPL(dw) : "-"}</td>
+                    <td style={S.tdR}>{d.trades > 0 ? d.trades : "-"}</td>
                   </tr>
                 );
               })}
@@ -432,6 +464,7 @@ export default function FXDashboard() {
 
   const isDark = theme === "dark";
   const themeColors = getColors(isDark);
+  const S = getStyles(themeColors);
 
   const TABS = [
     { id: "summary", label: "📊 サマリー" },
@@ -441,7 +474,7 @@ export default function FXDashboard() {
   ];
 
   return (
-    <div style={{ background: themeColors.bg, minHeight: "100vh", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", fontSize: 13, color: themeColors.text, transition: "background 0.3s, color 0.3s" }}>
+    <div style={S.page}>
       
       {/* ── スマホ画面上部の押し下げ用アクセントバー ＋ 切り替えスイッチ ── */}
       <div style={{ 
@@ -498,7 +531,7 @@ export default function FXDashboard() {
       </div>
 
       {/* ── タブバー ── */}
-      <div style={{ display: "flex", gap: 8, padding: "12px 20px 4px", overflowX: "auto", borderBottom: `1px solid ${themeColors.line}`, background: themeColors.card }}>
+      <div style={S.tabs}>
         {TABS.map(t => (
           <button 
             key={t.id} 
@@ -520,10 +553,10 @@ export default function FXDashboard() {
 
       {/* ── メインボディ ── */}
       <div style={{ padding: "16px 20px", maxWidth: 900, margin: "0 auto" }}>
-        {tab === "summary" && <SummaryTab sumMode={sumMode} setSumMode={setSumMode} sumMonth={sumMonth} setSumMonth={setSumMonth} sumYear={sumYear} setSumYear={setSumYear} themeColors={themeColors} isDark={isDark} />}
-        {tab === "chart"   && <ChartTab  metric={metric} setMetric={setMetric} themeColors={themeColors} isDark={isDark} />}
-        {tab === "pl"      && <PLTab themeColors={themeColors} isDark={isDark} />}
-        {tab === "table"   && <TableTab themeColors={themeColors} isDark={isDark} />}
+        {tab === "summary" && <SummaryTab sumMode={sumMode} setSumMode={setSumMode} sumMonth={sumMonth} setSumMonth={setSumMonth} sumYear={sumYear} setSumYear={setSumYear} themeColors={themeColors} isDark={isDark} S={S} />}
+        {tab === "chart"   && <ChartTab  metric={metric} setMetric={setMetric} themeColors={themeColors} isDark={isDark} S={S} />}
+        {tab === "pl"      && <PLTab themeColors={themeColors} isDark={isDark} S={S} />}
+        {tab === "table"   && <TableTab themeColors={themeColors} isDark={isDark} S={S} />}
       </div>
     </div>
   );
