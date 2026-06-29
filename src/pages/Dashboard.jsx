@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -128,7 +127,6 @@ const TAB_LABELS = {
 };
 
 export default function Dashboard() {
-  const navigate  = useNavigate();
   const [tab, setTab] = useState("summary");
 
   const progress   = (GRAND_TOTAL / GOAL) * 100;
@@ -156,7 +154,7 @@ export default function Dashboard() {
         border:`1px solid ${C.line}`,
       }}>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => window.history.back()}
           style={{
             background:"none", border:"none", color: C.acc,
             fontSize:13, cursor:"pointer", marginBottom:8, padding:0,
