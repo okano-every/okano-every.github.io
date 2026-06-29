@@ -302,8 +302,8 @@ export default function Dashboard() {
   const pnlRows = [
     { label:"証券（SBI/日興）", cost:RF_COST,   value:RF_TOTAL,   color:C.acc },
     { label:"iDeCo",            cost:IDECO_COST, value:IDECO_TOTAL, color:C.purple, note:"MF取得価額使用" },
-    { label:"ソニー生命",        cost:SONY_COST,  value:SONY_TOTAL,  color:"#f97316" },
-    { label:"JA共済（計算値）",  cost:jaCost,     value:jaTotal,    color:"#10b981", note:"複利計算（0.9%→0.75%）" },
+    { label:"ソニー生命（2契約）",        cost:SONY_COST,  value:SONY_TOTAL,  color:"#f97316" },
+    { label:"JA共済-個人年金",  cost:jaCost,     value:jaTotal,    color:"#10b981", note:"複利計算（当初5年0.9%→以降0.75%）" },
   ];
   const invCost  = pnlRows.reduce((s, r) => s + r.cost,  0);
   const invValue = pnlRows.reduce((s, r) => s + r.value, 0);
@@ -316,7 +316,7 @@ export default function Dashboard() {
     { name:"債券・外貨・他",   value:pieMisc,     color:"#6366f1" },
     { name:"iDeCo",           value:IDECO_TOTAL, color:C.purple },
     { name:"ソニー生命",       value:SONY_TOTAL,  color:"#f97316" },
-    { name:"JA共済",           value:jaTotal,     color:"#10b981" },
+    { name:"JA共済（見込み額）",           value:jaTotal,     color:"#10b981" },
   ];
 
   const usdJpySum = usdJpy ? Math.round(USD_SUM * usdJpy) : 0;
@@ -350,12 +350,12 @@ export default function Dashboard() {
         </button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.05em" }}>岡野ファミリー 総合資産</div>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.05em" }}>総合資産</div>
             <div style={{ fontSize: 32, fontWeight: 800, color: C.text, marginTop: 4, letterSpacing: "-0.02em" }}>
               {fmt(GRAND_TOTAL)}
             </div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
-              {DATA_DATE} ｜ 負債ネット済 ｜ JA共済計算値含む
+              {DATA_DATE} ｜ 資産ダッシュボード
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -408,10 +408,10 @@ export default function Dashboard() {
           {/* ミニカードグリッド */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10, marginBottom: 16 }}>
             {[
-              { label:"証券（含み益）",    value:fmt(RF_TOTAL),              sub:`+${fmt(RF_PNL)}`,          clr:C.acc   },
+              { label:"有価証券（評価損益）",    value:fmt(RF_TOTAL),              sub:`+${fmt(RF_PNL)}`,          clr:C.acc   },
               { label:"現金・預金",        value:fmt(BANK_TOTAL),            sub:"SMBC/UFJ/住信SBI",          clr:"#0284c7" },
               { label:"保険・年金合計",    value:fmt(SONY_TOTAL + jaTotal),  sub:"ソニー生命＋JA共済",        clr:"#10b981" },
-              { label:"iDeCo（評価益）",  value:fmt(IDECO_TOTAL),           sub:`+${fmt(IDECO_PNL)}`,       clr:C.purple  },
+              { label:"iDeCo（評価損益）",  value:fmt(IDECO_TOTAL),           sub:`+${fmt(IDECO_PNL)}`,       clr:C.purple  },
             ].map(({ label, value, sub, clr }) => (
               <div key={label} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
                 <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>{label}</div>
@@ -421,19 +421,19 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* 含み益 ハイライトカード */}
+          {/* 含み損益 ハイライトカード */}
           <div style={{
             background: "#eff6ff", border: `1px solid #bfdbfe`, borderRadius: 14,
             padding: "14px 18px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <div>
-              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>投資資産 総含み益</div>
+              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>投資資産 総含み損益</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: C.green, marginTop: 2 }}>+{fmt(invPnl)}</div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 11, color: C.muted }}>投資元本合計</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 2, fontFamily: "monospace" }}>{fmt(invCost)}</div>
-              <div style={{ fontSize: 12, color: C.green, fontWeight: 700, marginTop: 2 }}>利回り +{(invPnl / invCost * 100).toFixed(1)}%</div>
+              <div style={{ fontSize: 12, color: C.green, fontWeight: 700, marginTop: 2 }}>評価損益率 +{(invPnl / invCost * 100).toFixed(1)}%</div>
             </div>
           </div>
 
@@ -459,7 +459,7 @@ export default function Dashboard() {
               ))}
             </div>
             <div style={{ marginTop: 10, fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
-              ※ 債券・外貨・他 = 国内債券¥3M＋米ドル資産＋証券口座内現金（MT集計から逆算）
+              ※ 債券・外貨・他 = 国内債券＋米ドル資産＋証券口座内現金
             </div>
           </div>
         </div>
@@ -479,8 +479,8 @@ export default function Dashboard() {
                     <Th>区分</Th>
                     <Th right>投資元本</Th>
                     <Th right>評価額</Th>
-                    <Th right>含み損益</Th>
-                    <Th right>利回り</Th>
+                    <Th right>評価損益額</Th>
+                    <Th right>評価損益率</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -535,10 +535,10 @@ export default function Dashboard() {
             </div>
             <div style={{ marginTop: 12, padding: "10px 14px", background: "#f0fdf4", borderRadius: 10, border: `1px solid #bbf7d0` }}>
               <div style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>
-                総合含み益 {sgn(invPnl)}{fmt(invPnl)} ／ 投資利回り {sgn(invPnl)}{(invPnl / invCost * 100).toFixed(1)}%
+                総合含み損益 {sgn(invPnl)}{fmt(invPnl)} ／ 評価損益率 {sgn(invPnl)}{(invPnl / invCost * 100).toFixed(1)}%
               </div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.4 }}>
-                ※ 証券コスト = 評価額−含み益（Robofolio取得値）｜ iDeCo = MF取得価額 ｜ JA = 複利積立計算値
+                ※ 証券コスト = 評価額−含み損益（Robofolio取得値）｜ iDeCo = MF取得価額 ｜ JA共済 = 複利積立計算値
               </div>
             </div>
           </div>
@@ -580,7 +580,7 @@ export default function Dashboard() {
       {tab === "securities" && (
         <div>
           <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, background: C.card, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.line}`, fontWeight: 500 }}>
-            Robofolio（SBI本人/妻 + 日興子供3名）｜ 合計 {fmt(RF_TOTAL)} 含み益
+            Robofolio（SBI本人/妻 + 日興子供3名）｜ 合計 {fmt(RF_TOTAL)} 含み損益
             <span style={{ color: C.green, fontWeight: 700 }}> +{fmt(RF_PNL)}</span>
           </div>
           {["本人","妻","長女","次女","長男"].map(owner => {
@@ -595,7 +595,7 @@ export default function Dashboard() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr>
-                        <Th>銘柄</Th><Th>区分</Th><Th right>評価額</Th><Th right>含み益</Th>
+                        <Th>銘柄</Th><Th>区分</Th><Th right>評価額</Th><Th right>含み損益</Th>
                       </tr>
                     </thead>
                     <tbody>
@@ -727,7 +727,7 @@ export default function Dashboard() {
             <SecHead title="iDeCo（SBI確定拠出年金）" total={IDECO_TOTAL} cost={IDECO_COST} pnl={IDECO_PNL}/>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr><Th>銘柄</Th><Th right>取得価額</Th><Th right>現在価値</Th><Th right>含み益</Th></tr>
+                <tr><Th>銘柄</Th><Th right>取得価額</Th><Th right>現在価値</Th><Th right>含み損益</Th></tr>
               </thead>
               <tbody>
                 {IDECO_ITEMS.map((it, i) => (
@@ -804,7 +804,7 @@ export default function Dashboard() {
                     {[
                       { label:"払込累計（元本）", value:fmt(c.cost),  color:C.muted },
                       { label:"計算評価額",       value:fmt(c.value), color:C.text },
-                      { label:"含み益",           value:`${sgn(c.pnl)}${fmt(c.pnl)}`, color:pnlClr(c.pnl) },
+                      { label:"含み損益",           value:`${sgn(c.pnl)}${fmt(c.pnl)}`, color:pnlClr(c.pnl) },
                     ].map(({ label, value, color }) => (
                       <div key={label} style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>{label}</div>
