@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 
 // ================================================================
 // テーマカラー動的定義 (Portalと完全に同期)
@@ -30,9 +30,9 @@ const sgn    = (n) => (n >= 0 ? "+" : "");
 function monthsBetween(d1, d2) {
   return (d2.getFullYear() - d1.getFullYear()) * 12 + d2.getMonth() - d1.getMonth();
 }
-function calcJA(c) {
+function calcJA(c, asOfDate) {
   const start = new Date(c.startDate);
-  const now   = new Date();
+  const now   = asOfDate || new Date();
   const total = Math.max(0, monthsBetween(start, now));
   const p1    = Math.min(c.rate1Years * 12, total);
   const p2    = Math.max(0, total - p1);
@@ -252,9 +252,9 @@ function JaAddForm({ onAdd, onCancel }) {
 // ================================================================
 // 各種定義
 // ================================================================
-const TABS   = ["summary","pnl","securities","banks","insurance","missing"];
+const TABS   = ["summary","trend","pnl","securities","banks","insurance","missing"];
 const TAB_LB = {
-  summary:"📊 サマリー", pnl:"💹 投資収益", securities:"📈 証券銘柄",
+  summary:"📊 サマリー", trend:"📉 資産推移", pnl:"💹 投資収益", securities:"📈 証券銘柄",
   banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金", missing:"⚠️ 未連携",
 };
 
@@ -270,6 +270,8 @@ export default function Dashboard() {
   const [theme,   setTheme]   = useState("light");
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [assetsError,  setAssetsError]  = useState(false);
+  const [historyRows,  setHistoryRows]  = useState([]);
+  const [historyError, setHistoryError] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("okano-app-theme") || "light";
@@ -299,6 +301,14 @@ export default function Dashboard() {
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(d => { applyAssetsData(d); setAssetsLoaded(true); })
       .catch(() => { setAssetsError(true); setAssetsLoaded(true); });
+  }, []);
+
+  // 資産推移グラフ用：asset_history.csvをJSON化したものを取得（build_assets_json.pyが毎回生成）
+  useEffect(() => {
+    fetch("/data/asset_history.json")
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(rows => setHistoryRows(Array.isArray(rows) ? rows : []))
+      .catch(() => setHistoryError(true));
   }, []);
 
   const jaActive = jaList.filter(c => !c.archived);
@@ -331,9 +341,34 @@ export default function Dashboard() {
 
   const usdJpySum = usdJpy ? Math.round(USD_SUM * usdJpy) : 0;
 
+  // 資産推移データ加工：同一日付は最新行を採用して重複を集約し、日付昇順に並べ替え
+  // JA共済は契約条件から任意の過去日付で計算可能なため（CSVに保存不要）、各日付でcalcJAを適用して遷及算出
+  const historyByDate = new Map();
+  historyRows.forEach(r => {
+    const asOf = new Date(r.date);
+    const jaAtDate = jaActive.reduce((s, c) => s + calcJA(c, asOf).value, 0);
+    historyByDate.set(r.date, {
+      date: r.date,
+      grand: Number(r.grand_total) || 0,
+      securities: Number(r.rf_securities) || 0,
+      ideco: Number(r.ideco_total) || 0,
+      bank: Number(r.bank_total) || 0,
+      sony: Number(r.sony_total) || 0,
+      ja: jaAtDate,
+      insurance: (Number(r.sony_total) || 0) + jaAtDate,
+    });
+  });
+  const trendData = Array.from(historyByDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+  const trendLatest = trendData[trendData.length - 1];
+  const trendFirst  = trendData[0];
+  const trendChange = trendLatest && trendFirst ? trendLatest.grand - trendFirst.grand : 0;
+  const trendHasIdeco = trendData.some(d => d.ideco > 0);
+  const trendHasBank  = trendData.some(d => d.bank  > 0);
+
   const saveJa    = (updated) => { setJaList(l => l.map(c => c.id===updated.id ? updated : c)); setEditJa(null); };
   const archiveJa = (id)      => setJaList(l => l.map(c => c.id===id ? { ...c, archived:!c.archived } : c));
   const addJa     = (c)       => { setJaList(l => [...l, c]); setAddMode(false); };
+  const [secViewMode, setSecViewMode] = useState("trend"); // 有価資産セクション："trend"(推移) / "breakdown"(現在の銘柄別内訳)
 
   const Th = ({ children, right }) => (
     <th style={{ textAlign: right ? "right" : "left", padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, whiteSpace: "nowrap" }}>
@@ -897,6 +932,148 @@ export default function Dashboard() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── TAB: 資産推移 ── */}
+      {tab === "trend" && (
+        <div>
+          {historyError && (
+            <div style={{ background: isDark ? "#3f1d1d" : "#fef2f2", border: `1px solid ${isDark ? "#7f1d1d" : "#fecaca"}`, color: isDark ? "#fca5a5" : "#b91c1c", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 12, fontWeight: 600 }}>
+              ⚠️ 資産推移データ（asset_history.json）の取得に失敗しました。
+            </div>
+          )}
+
+          {trendData.length === 0 ? (
+            <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "24px", textAlign: "center", color: C.muted, fontSize: 13 }}>
+              推移データがまだありません。run_all.bat の実行が積み重なると、ここにグラフが表示されます。
+            </div>
+          ) : (
+            <>
+              {/* — 一番上：総合資産の推移 — */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10, marginBottom: 16 }}>
+                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>最新の記録総資産（MT基準）</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: C.acc, fontFamily: "monospace" }}>{fmt(trendLatest.grand)}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4, fontWeight: 600 }}>{trendLatest.date}</div>
+                </div>
+                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>記録開始からの増減</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: pnlClr(trendChange), fontFamily: "monospace" }}>{sgn(trendChange)}{fmt(trendChange)}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4, fontWeight: 600 }}>{trendFirst.date} 〜 {trendLatest.date}（{trendData.length}記録）</div>
+                </div>
+              </div>
+
+              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 20, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>📊 総合資産の推移</div>
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>※ MoneyTree基準の簡易合計です（サマリータブの総資産とは定義が異なります）</div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+                    <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+                    <Tooltip formatter={(v) => fmt(v)} />
+                    <Line type="monotone" dataKey="grand" name="総資産" stroke={C.acc} strokeWidth={2.5} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* — 分類別：有価資産（推移 / 銘柄別切り替え） — */}
+              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>📈 有価資産（元本保証されないもの）</div>
+                  <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
+                    <button onClick={() => setSecViewMode("trend")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: secViewMode==="trend" ? C.acc : "transparent", color: secViewMode==="trend" ? "#fff" : C.muted, fontWeight: 600 }}>推移</button>
+                    <button onClick={() => setSecViewMode("breakdown")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: secViewMode==="breakdown" ? C.acc : "transparent", color: secViewMode==="breakdown" ? "#fff" : C.muted, fontWeight: 600 }}>銘柄別内訳</button>
+                  </div>
+                </div>
+                {secViewMode === "trend" ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+                      <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+                      <Tooltip formatter={(v) => fmt(v)} />
+                      <Line type="monotone" dataKey="securities" name="有価資産" stroke="#0052cc" strokeWidth={2.5} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>※ 現時点（{DATA_DATE}）の銘柄別内訳です。過去推移は未収集のため表示できません。</div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead><tr><Th>銘柄</Th><Th>名義</Th><Th right>評価額</Th></tr></thead>
+                      <tbody>
+                        {[...RF_ITEMS].sort((a, b) => b.amount - a.amount).map((it, i) => (
+                          <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
+                            <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.name}</td>
+                            <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{it.owner}</td>
+                            <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* — 分類別：iDeCo — */}
+              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>🛡 iDeCo</div>
+                {trendHasIdeco ? (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+                      <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+                      <Tooltip formatter={(v) => fmt(v)} />
+                      <Line type="monotone" dataKey="ideco" name="iDeCo" stroke={C.purple} strokeWidth={2.5} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ fontSize: 12, color: C.muted, textAlign: "center", padding: "20px 0" }}>iDeCoの推移データは今後の記録から表示されます</div>
+                )}
+              </div>
+
+              {/* — 分類別：現金 — */}
+              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>🏦 現金</div>
+                {trendHasBank ? (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+                      <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+                      <Tooltip formatter={(v) => fmt(v)} />
+                      <Line type="monotone" dataKey="bank" name="現金" stroke="#0284c7" strokeWidth={2.5} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ fontSize: 12, color: C.muted, textAlign: "center", padding: "20px 0" }}>現金合計の推移データは今後の記録から表示されます</div>
+                )}
+              </div>
+
+              {/* — 分類別：保険年金（ソニー生命＋JA共済計算値） — */}
+              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>💰 保険年金（ソニー生命＋JA共済）</div>
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>※ JA共済は契約条件から遡及計算（実際の取得値ではありません）</div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+                    <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+                    <Tooltip formatter={(v) => fmt(v)} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Line type="monotone" dataKey="insurance" name="保険年金合計" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="sony" name="ソニー生命のみ" stroke="#f97316" strokeWidth={1.5} dot={{ r: 2 }} strokeDasharray="4 3" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
+                記録は run_all.bat 実行ごとに自動追記されます（update_history.py → 04_HISTORY/asset_history.csv）。
+              </div>
+            </>
+          )}
         </div>
       )}
 
