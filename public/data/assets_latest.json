@@ -1,6 +1,6 @@
 {
   "dataDate": "2026/06/30",
-  "generatedAt": "2026-06-30T19:01:03.466343",
+  "generatedAt": "2026-06-30T20:14:48.566724",
   "rfItems": [
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
@@ -13,7 +13,8 @@
       "qty": 49879,
       "price": 43713.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
@@ -26,7 +27,8 @@
       "qty": 25632,
       "price": 43713.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｎｅｏ 宇宙開発",
@@ -39,7 +41,8 @@
       "qty": 484,
       "price": 56819.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 全世界株式",
@@ -52,7 +55,8 @@
       "qty": 183778,
       "price": 37550.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 全世界株式",
@@ -65,7 +69,8 @@
       "qty": 981556,
       "price": 37550.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ｉＳ米国債七十",
@@ -78,7 +83,8 @@
       "qty": 6330,
       "price": 324.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ｉＳ米国債三七ヘジ",
@@ -91,7 +97,8 @@
       "qty": 3050,
       "price": 659.4,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ニッセイ−＜購入・換金手数料なし＞ニッセイＮＡＳＤＡＱ１００インデックスファンド",
@@ -104,7 +111,8 @@
       "qty": 11694,
       "price": 28086.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ＳＢＩ−ＳＢＩ・Ｖ・米国高配当株式インデックス・ファンド",
@@ -117,7 +125,8 @@
       "qty": 628436,
       "price": 25036.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
@@ -130,7 +139,8 @@
       "qty": 38728,
       "price": 43713.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 全世界株式",
@@ -143,7 +153,8 @@
       "qty": 62760,
       "price": 37550.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ニッセイ−＜購入・換金手数料なし＞ニッセイＮＡＳＤＡＱ１００インデックスファンド",
@@ -156,7 +167,8 @@
       "qty": 58463,
       "price": 28086.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "日本株配当オープン",
@@ -169,7 +181,8 @@
       "qty": 424,
       "price": 17251.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "ＳＢＩ−ＳＢＩ・Ｖ・米国高配当株式インデックス・ファンド",
@@ -182,7 +195,8 @@
       "qty": 105801,
       "price": 15283.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/30 18:00"
     },
     {
       "name": "日本株配当オープン",
@@ -195,7 +209,8 @@
       "qty": 329495,
       "price": 16703.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/12 17:00"
     },
     {
       "name": "楽天・全米株式インデックス・ファンド",
@@ -208,7 +223,8 @@
       "qty": 54032,
       "price": 44035.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/12 17:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
@@ -221,7 +237,8 @@
       "qty": 176757,
       "price": 43610.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/12 17:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
@@ -234,7 +251,8 @@
       "qty": 64566,
       "price": 43610.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/12 17:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 全世界株式",
@@ -247,7 +265,8 @@
       "qty": 33386,
       "price": 37159.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/12 17:00"
     },
     {
       "name": "ＳＢＩ−ＳＢＩ・Ｖ・米国高配当株式インデックス・ファンド",
@@ -260,66 +279,81 @@
       "qty": 112916,
       "price": 24663.0,
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "06/12 17:00"
     }
   ],
   "bankItems": [
     {
-      "name": "SMBC 本人",
+      "name": "SMBC（本人）",
       "amount": 2233419,
       "src": "MT",
-      "owner": "本人"
+      "owner": "本人",
+      "lastUpdate": "2026/06/30"
     },
     {
-      "name": "SMBC 妻",
+      "name": "SMBC（妻）",
       "amount": 837749,
       "src": "MT",
-      "owner": "妻"
+      "owner": "妻",
+      "lastUpdate": "2026/06/30"
     },
     {
-      "name": "SMBC 長女",
+      "name": "SMBC（長女）",
       "amount": 10074,
       "src": "MT",
-      "owner": "長女"
+      "owner": "長女",
+      "lastUpdate": "2026/06/30"
     },
     {
-      "name": "SMBC 次女",
+      "name": "SMBC（次女）",
       "amount": 10074,
       "src": "MT",
-      "owner": "次女"
+      "owner": "次女",
+      "lastUpdate": "2026/06/30"
     },
     {
-      "name": "SMBC 長男",
+      "name": "SMBC（長男）",
       "amount": 10166,
       "src": "MT",
-      "owner": "長男"
+      "owner": "長男",
+      "lastUpdate": "2026/06/30"
     },
     {
-      "name": "UFJ 本人",
+      "name": "UFJ（本人）",
       "amount": 566,
       "src": "MT",
-      "owner": "本人"
+      "owner": "本人",
+      "lastUpdate": "2026/06/27"
     },
     {
-      "name": "UFJ 妻",
+      "name": "UFJ（妻）",
       "amount": 0,
       "src": "MT",
-      "owner": "妻"
+      "owner": "妻",
+      "lastUpdate": null
     },
     {
-      "name": "代表口座 - 円普通（本人）",
+      "name": "住信代表 - 円普通（本人）",
       "amount": 114,
       "src": "MF",
-      "owner": "本人"
+      "owner": "本人",
+      "lastUpdate": "(06/27 21:24)"
     },
     {
-      "name": "SBIハイブリッド預金（本人）",
+      "name": "住信HVT預金（本人）",
       "amount": 4396031,
       "src": "MF",
-      "owner": "本人"
+      "owner": "本人",
+      "lastUpdate": "(06/27 21:24)"
     }
   ],
   "usdItems": [
+    {
+      "name": "米ドルMMF（妻/特定）",
+      "usd": 7007.25,
+      "owner": "妻"
+    },
     {
       "name": "米ドル現金（妻）",
       "usd": 7000.0,
@@ -336,7 +370,8 @@
       "qty": "-",
       "price": "-",
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "(06/30 15:42)"
     },
     {
       "name": "eMAXIS Slim 全世界株式(除く日本)（本人）",
@@ -347,7 +382,8 @@
       "qty": "-",
       "price": "-",
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "(06/30 15:42)"
     },
     {
       "name": "eMAXIS Slim 米国株式(S&P500)（本人）",
@@ -358,7 +394,8 @@
       "qty": "-",
       "price": "-",
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "(06/30 15:42)"
     },
     {
       "name": "eMAXIS Slim 新興国株式インデックス（本人）",
@@ -369,7 +406,8 @@
       "qty": "-",
       "price": "-",
       "divYield": "-",
-      "divMonth": "-"
+      "divMonth": "-",
+      "lastUpdate": "(06/30 15:42)"
     }
   ],
   "sonyItems": [
@@ -377,14 +415,14 @@
       "id": 1,
       "name": "契約1",
       "certNo": "3607496942",
-      "amount": 3281672,
+      "amount": 3314999,
       "cost": 2206200
     },
     {
       "id": 2,
       "name": "契約2",
       "certNo": "3826415397",
-      "amount": 1437044,
+      "amount": 1452306,
       "cost": 1155932
     }
   ],
