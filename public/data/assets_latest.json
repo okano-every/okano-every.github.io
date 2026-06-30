@@ -1,6 +1,6 @@
 {
   "dataDate": "2026/06/30",
-  "generatedAt": "2026-06-30T16:20:54.471836",
+  "generatedAt": "2026-06-30T17:19:50.564942",
   "rfItems": [
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
@@ -265,6 +265,48 @@
   ],
   "bankItems": [
     {
+      "name": "SMBC 本人",
+      "amount": 2233419,
+      "src": "MT",
+      "owner": "本人"
+    },
+    {
+      "name": "SMBC 妻",
+      "amount": 837749,
+      "src": "MT",
+      "owner": "妻"
+    },
+    {
+      "name": "SMBC 長女",
+      "amount": 10074,
+      "src": "MT",
+      "owner": "長女"
+    },
+    {
+      "name": "SMBC 次女",
+      "amount": 10074,
+      "src": "MT",
+      "owner": "次女"
+    },
+    {
+      "name": "SMBC 長男",
+      "amount": 10166,
+      "src": "MT",
+      "owner": "長男"
+    },
+    {
+      "name": "UFJ 本人",
+      "amount": 566,
+      "src": "MT",
+      "owner": "本人"
+    },
+    {
+      "name": "UFJ 妻",
+      "amount": 0,
+      "src": "MT",
+      "owner": "妻"
+    },
+    {
       "name": "代表口座 - 円普通（本人）",
       "amount": 114,
       "src": "MF",
@@ -277,7 +319,13 @@
       "owner": "本人"
     }
   ],
-  "usdItems": [],
+  "usdItems": [
+    {
+      "name": "米ドル現金（妻）",
+      "usd": 7000.0,
+      "owner": "妻"
+    }
+  ],
   "idecoItems": [
     {
       "name": "eMAXIS Slim 国内株式(TOPIX)（本人）",
@@ -340,7 +388,9 @@
       "cost": 1155932
     }
   ],
-  "mtTotal": 0,
+  "mtTotal": 27382409,
   "mfUnique": 4396145,
-  "idecoAdj": 127663
+  "idecoAdj": 127663,
+  "mfBankLastUpdate": "(06/27 21:24)",
+  "mfIdecoLastUpdate": "(06/30 15:42)"
 }
