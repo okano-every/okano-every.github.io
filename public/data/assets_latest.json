@@ -1,6 +1,6 @@
 {
   "dataDate": "2026/06/30",
-  "generatedAt": "2026-06-30T15:29:53.481633",
+  "generatedAt": "2026-06-30T16:20:54.471836",
   "rfItems": [
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
@@ -70,26 +70,26 @@
     {
       "name": "ｉＳ米国債七十",
       "sub": "NISA",
-      "amount": 2049021,
-      "pnl": 48741,
+      "amount": 2050920,
+      "pnl": 50640,
       "owner": "本人",
       "acc": "SBI",
       "costPrice": 316.0,
       "qty": 6330,
-      "price": 323.7,
+      "price": 324.0,
       "divYield": "-",
       "divMonth": "-"
     },
     {
       "name": "ｉＳ米国債三七ヘジ",
       "sub": "特定",
-      "amount": 2011475,
-      "pnl": -25925,
+      "amount": 2011170,
+      "pnl": -26230,
       "owner": "本人",
       "acc": "SBI",
       "costPrice": 668.0,
       "qty": 3050,
-      "price": 659.5,
+      "price": 659.4,
       "divYield": "-",
       "divMonth": "-"
     },
@@ -265,77 +265,25 @@
   ],
   "bankItems": [
     {
-      "name": "SMBC 本人",
-      "amount": 2233419,
-      "src": "MT",
-      "owner": "本人"
-    },
-    {
-      "name": "SMBC 妻",
-      "amount": 837749,
-      "src": "MT",
-      "owner": "妻"
-    },
-    {
-      "name": "SMBC 長女",
-      "amount": 10074,
-      "src": "MT",
-      "owner": "長女"
-    },
-    {
-      "name": "SMBC 次女",
-      "amount": 10074,
-      "src": "MT",
-      "owner": "次女"
-    },
-    {
-      "name": "SMBC 長男",
-      "amount": 10166,
-      "src": "MT",
-      "owner": "長男"
-    },
-    {
-      "name": "UFJ 本人",
-      "amount": 566,
-      "src": "MT",
-      "owner": "本人"
-    },
-    {
-      "name": "住信SBI 代表口座",
+      "name": "代表口座 - 円普通（本人）",
       "amount": 114,
       "src": "MF",
       "owner": "本人"
     },
     {
-      "name": "住信SBI ハイブリッド",
+      "name": "SBIハイブリッド預金（本人）",
       "amount": 4396031,
       "src": "MF",
       "owner": "本人"
     }
   ],
-  "usdItems": [
-    {
-      "name": "米ドル建債券（本人/特定）",
-      "usd": 14816.34,
-      "owner": "本人"
-    },
-    {
-      "name": "米ドル現金（本人）",
-      "usd": 7000.0,
-      "owner": "本人"
-    },
-    {
-      "name": "米ドル現金（妻）",
-      "usd": 7000.0,
-      "owner": "妻"
-    }
-  ],
+  "usdItems": [],
   "idecoItems": [
     {
-      "name": "eMAXIS Slim 国内株式(TOPIX)",
-      "amount": 14676,
+      "name": "eMAXIS Slim 国内株式(TOPIX)（本人）",
+      "amount": 14462,
       "cost": 11295,
-      "pnl": 3381,
+      "pnl": 3167,
       "costPrice": "-",
       "qty": "-",
       "price": "-",
@@ -343,10 +291,10 @@
       "divMonth": "-"
     },
     {
-      "name": "eMAXIS Slim 全世界株式(除く日本)",
-      "amount": 112673,
+      "name": "eMAXIS Slim 全世界株式(除く日本)（本人）",
+      "amount": 110746,
       "cost": 93245,
-      "pnl": 19428,
+      "pnl": 17501,
       "costPrice": "-",
       "qty": "-",
       "price": "-",
@@ -354,10 +302,10 @@
       "divMonth": "-"
     },
     {
-      "name": "eMAXIS Slim 米国株式(S&P500)",
-      "amount": 1639,
+      "name": "eMAXIS Slim 米国株式(S&P500)（本人）",
+      "amount": 1613,
       "cost": 1268,
-      "pnl": 371,
+      "pnl": 345,
       "costPrice": "-",
       "qty": "-",
       "price": "-",
@@ -365,10 +313,10 @@
       "divMonth": "-"
     },
     {
-      "name": "eMAXIS Slim 新興国株式インデックス",
-      "amount": 878,
+      "name": "eMAXIS Slim 新興国株式インデックス（本人）",
+      "amount": 842,
       "cost": 561,
-      "pnl": 317,
+      "pnl": 281,
       "costPrice": "-",
       "qty": "-",
       "price": "-",
@@ -392,7 +340,7 @@
       "cost": 1155932
     }
   ],
-  "mtTotal": 27554475,
-  "mfUnique": 4396031,
-  "idecoAdj": 3667
+  "mtTotal": 0,
+  "mfUnique": 4396145,
+  "idecoAdj": 127663
 }
