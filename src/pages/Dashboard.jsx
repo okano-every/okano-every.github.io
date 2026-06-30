@@ -50,79 +50,34 @@ function calcJA(c) {
 // ================================================================
 // 【最新データ拡張】証券（Robofolio: SBI 本人/妻 + 日興 子供3名の詳細データを完全マッピング）
 // ================================================================
-const DATA_DATE = "2026/06/28";
+// 【2026-06-30改修】以下、証券・銀行・外貨・iDeCo・ソニー生命の数値は
+// public/data/assets_latest.json から実行時に fetch して反映する（build_assets_json.py が自動生成）。
+let DATA_DATE = "読み込み中...";
 
-const RF_ITEMS = [
-  // ── 本人 SBI ──
-  { name:"eMAXIS Slim オルカン",  sub:"NISA成長", amount:3696245, pnl: 864206, owner:"本人", acc:"SBI", costPrice: 28852.55, qty: 981556, price: 37657, divYield: "-", divMonth: "-" },
-  { name:"iS米国債七十(1655)",     sub:"NISA",    amount:2044590, pnl:  44310, owner:"本人", acc:"SBI", costPrice: 316.00,    qty: 6330,   price: 323,   divYield: "-", divMonth: "-" },
-  { name:"iS米国債37ヘジ(2856)",   sub:"特定",    amount:2009950, pnl: -27450, owner:"本人", acc:"SBI", costPrice: 668.00,    qty: 3050,   price: 659,   divYield: "-", divMonth: "-" },
-  { name:"SBI高配当株式",          sub:"NISA",    amount:1571655, pnl: 361979, owner:"本人", acc:"SBI", costPrice: 19249.00,   qty: 628436, price: 25009, divYield: "-", divMonth: "-" },
-  { name:"eMAXIS Slim オルカン",  sub:"特定",     amount: 692052, pnl:  32051, owner:"本人", acc:"SBI", costPrice: 35913.00,   qty: 183778, price: 37657, divYield: "-", divMonth: "-" },
-  { name:"eMAXIS Slim S&P500",    sub:"特定",     amount: 218235, pnl:   8235, owner:"本人", acc:"SBI", costPrice: 42102.00,   qty: 49879,  price: 43753, divYield: "-", divMonth: "-" },
-  { name:"eMAXIS Slim S&P500",    sub:"NISA",     amount: 112147, pnl:  12147, owner:"本人", acc:"SBI", costPrice: 39014.00,   qty: 25632,  price: 43753, divYield: "-", divMonth: "-" },
-  { name:"ニッセイNASDAQ100",      sub:"特定",     amount:  32971, pnl:   2971, owner:"本人", acc:"SBI", costPrice: 25655.00,   qty: 11694,  price: 28195, divYield: "-", divMonth: "-" },
-  { name:"eMAXIS Neo 宇宙開発",   sub:"特定",     amount:   2742, pnl:    242, owner:"本人", acc:"SBI", costPrice: 51653.00,   qty: 484,    price: 56654, divYield: "-", divMonth: "-" },
-  // ── 妻 SBI ──
-  { name:"eMAXIS Slim オルカン",  sub:"NISA",     amount: 236335, pnl:  16330, owner:"妻",   acc:"SBI", costPrice: 35055.00,   qty: 62760,  price: 37657, divYield: "-", divMonth: "-" },
-  { name:"eMAXIS Slim S&P500",    sub:"NISA",     amount: 169446, pnl:   9446, owner:"妻",   acc:"SBI", costPrice: 41314.00,   qty: 38728,  price: 43753, divYield: "-", divMonth: "-" },
-  { name:"ニッセイNASDAQ100",      sub:"NISA",     amount: 164836, pnl:  14832, owner:"妻",   acc:"SBI", costPrice: 25658.00,   qty: 58463,  price: 28195, divYield: "-", divMonth: "-" },
-  { name:"SBI高配当株式 年4回",    sub:"NISA",     amount: 161526, pnl:  29159, owner:"妻",   acc:"SBI", costPrice: 12511.00,   qty: 105801, price: 15267, divYield: "-", divMonth: "-" },
-  { name:"日本株配当オープン",      sub:"NISA",     amount:    734, pnl:     68, owner:"妻",   acc:"SBI", costPrice: 15708.00,   qty: 424,    price: 17326, divYield: "-", divMonth: "-" },
-  // ── 子供 日興 ──
-  { name:"日本株配当オープン",      sub:"特定",     amount: 550355, pnl:  46401, owner:"長女", acc:"日興", costPrice: 15294.74,   qty: 329495, price: 16703, divYield: "-", divMonth: "-" },
-  { name:"楽天全米株式",           sub:"特定",     amount: 237929, pnl:  57929, owner:"長女", acc:"日興", costPrice: 33313.60,   qty: 54032,  price: 44035, divYield: "-", divMonth: "-" },
-  { name:"eMAXIS Slim S&P500",    sub:"特定",     amount: 770837, pnl: 100837, owner:"次女", acc:"日興", costPrice: 37905.15,   qty: 176757, price: 43610, divYield: "-", divMonth: "-" },
-  { name:"eMAXIS Slim S&P500",    sub:"特定",     amount: 281572, pnl:  22572, owner:"長男", acc:"日興", costPrice: 40114.00,   qty: 64566,  price: 43610, divYield: "-", divMonth: "-" },
-  { name:"eMAXIS Slim オルカン",  sub:"特定",     amount: 124059, pnl:  32060, owner:"長男", acc:"日興", costPrice: 27556.46,   qty: 33386,  price: 37159, divYield: "-", divMonth: "-" },
-  { name:"SBI高配当株式",          sub:"特定",     amount: 278484, pnl:  19484, owner:"長男", acc:"日興", costPrice: 22937.41,   qty: 112916, price: 24663, divYield: "-", divMonth: "-" },
-];
-const RF_TOTAL = RF_ITEMS.reduce((s, i) => s + i.amount, 0);
-const RF_PNL   = RF_ITEMS.reduce((s, i) => s + i.pnl,    0);
-const RF_COST  = RF_TOTAL - RF_PNL;
+let RF_ITEMS = [];
+let RF_TOTAL = 0;
+let RF_PNL   = 0;
+let RF_COST  = 0;
 
 // 銀行口座
-const BANK_ITEMS = [
-  { name:"SMBC 本人",             amount:2264792, src:"MT", owner:"本人" },
-  { name:"SMBC 妻",               amount: 887749, src:"MT", owner:"妻"   },
-  { name:"SMBC 長女",             amount:  10074, src:"MT", owner:"長女" },
-  { name:"SMBC 次女",             amount:  10074, src:"MT", owner:"次女" },
-  { name:"SMBC 長男",             amount:  10166, src:"MT", owner:"長男" },
-  { name:"UFJ 本人",              amount:    566, src:"MT", owner:"本人" },
-  { name:"住信SBI 代表口座",      amount:    114, src:"MF", owner:"本人" },
-  { name:"住信SBI ハイブリッド",  amount:4396031, src:"MF", owner:"本人" },
-];
-const BANK_TOTAL = BANK_ITEMS.reduce((s, i) => s + i.amount, 0);
+let BANK_ITEMS = [];
+let BANK_TOTAL = 0;
 
 // ドル建て資産
-const USD_ITEMS = [
-  { name:"米ドル建債券（本人/特定）", usd:14816.34, owner:"本人" },
-  { name:"米ドルMMF（本人/特定）",   usd: 7000.00, owner:"本人" },
-  { name:"米ドル現金（本人）",        usd: 7000.00, owner:"本人" },
-  { name:"米ドルMMF（妻/特定）",     usd: 7000.00, owner:"妻"   },
-  { name:"米ドル現金（妻）",          usd: 7000.00, owner:"妻"   },
-];
-const USD_SUM = USD_ITEMS.reduce((s, i) => s + i.usd, 0);
+let USD_ITEMS = [];
+let USD_SUM = 0;
 
 // iDeCo
-const IDECO_ITEMS = [
-  { name:"eMAXIS Slim 全世界(除く日本)", amount:112673, cost:93245, pnl:19428, costPrice: "-", qty: "-", price: "-", divYield: "-", divMonth: "-" },
-  { name:"eMAXIS Slim S&P500",          amount:  1639, cost: 1268, pnl:   371, costPrice: "-", qty: "-", price: "-", divYield: "-", divMonth: "-" },
-  { name:"eMAXIS Slim 国内株式(TOPIX)", amount: 14676, cost:11295, pnl:  3381, costPrice: "-", qty: "-", price: "-", divYield: "-", divMonth: "-" },
-  { name:"eMAXIS Slim 新興国株式",      amount:   878, cost:  561, pnl:   317, costPrice: "-", qty: "-", price: "-", divYield: "-", divMonth: "-" },
-];
-const IDECO_TOTAL = IDECO_ITEMS.reduce((s, i) => s + i.amount, 0);
-const IDECO_COST  = IDECO_ITEMS.reduce((s, i) => s + i.cost,   0);
-const IDECO_PNL   = IDECO_ITEMS.reduce((s, i) => s + i.pnl,    0);
+let IDECO_ITEMS = [];
+let IDECO_TOTAL = 0;
+let IDECO_COST  = 0;
+let IDECO_PNL   = 0;
 
 // ソニー生命
-const SONY_ITEMS = [
-  { id:1, name:"契約1", certNo:"3607496942", amount:3258542, cost:2206200 },
-  { id:2, name:"契約2", certNo:"3826415397", amount:1428395, cost:1155932 },
-];
-const SONY_TOTAL = SONY_ITEMS.reduce((s, i) => s + i.amount, 0);
-const SONY_COST  = SONY_ITEMS.reduce((s, i) => s + i.cost,   0);
-const SONY_PNL   = SONY_TOTAL - SONY_COST;
+let SONY_ITEMS = [];
+let SONY_TOTAL = 0;
+let SONY_COST  = 0;
+let SONY_PNL   = 0;
 
 // JA共済 初期契約データ
 const INIT_JA = [{
@@ -137,9 +92,43 @@ const INIT_JA = [{
   notes:"当初5年 0.9% → 以降 0.75%最低保証\n最低4,653,000円（46.53万×10年）\n年金受取: 2048〜2058年（10年間）\n23/3/1 49.2万/年・25/9/1 49.4万/年 ✓確認済",
 }];
 
-const MT_TOTAL  = 27656_207;
-const MF_UNIQUE =  4396_145;
-const IDECO_ADJ =      3667;
+let MT_TOTAL  = 0;
+let MF_UNIQUE = 0;
+let IDECO_ADJ = 0;
+let MF_BANK_LAST_UPDATE = null;
+let MF_IDECO_LAST_UPDATE = null;
+
+// assets_latest.json 取得完了時にモジュールスコープ変数を一括書き換え。取得失敗時は呼ばれず、直前の値を保持（可用性優先）。
+function applyAssetsData(d) {
+  DATA_DATE  = d.dataDate || DATA_DATE;
+
+  RF_ITEMS = Array.isArray(d.rfItems) ? d.rfItems : [];
+  RF_TOTAL = RF_ITEMS.reduce((s, i) => s + i.amount, 0);
+  RF_PNL   = RF_ITEMS.reduce((s, i) => s + i.pnl,    0);
+  RF_COST  = RF_TOTAL - RF_PNL;
+
+  BANK_ITEMS = Array.isArray(d.bankItems) ? d.bankItems : [];
+  BANK_TOTAL = BANK_ITEMS.reduce((s, i) => s + i.amount, 0);
+
+  USD_ITEMS = Array.isArray(d.usdItems) ? d.usdItems : [];
+  USD_SUM   = USD_ITEMS.reduce((s, i) => s + i.usd, 0);
+
+  IDECO_ITEMS = Array.isArray(d.idecoItems) ? d.idecoItems : [];
+  IDECO_TOTAL = IDECO_ITEMS.reduce((s, i) => s + i.amount, 0);
+  IDECO_COST  = IDECO_ITEMS.reduce((s, i) => s + i.cost,   0);
+  IDECO_PNL   = IDECO_ITEMS.reduce((s, i) => s + i.pnl,    0);
+
+  SONY_ITEMS = Array.isArray(d.sonyItems) ? d.sonyItems : [];
+  SONY_TOTAL = SONY_ITEMS.reduce((s, i) => s + i.amount, 0);
+  SONY_COST  = SONY_ITEMS.reduce((s, i) => s + i.cost,   0);
+  SONY_PNL   = SONY_TOTAL - SONY_COST;
+
+  MT_TOTAL  = d.mtTotal  || 0;
+  MF_UNIQUE = d.mfUnique || 0;
+  IDECO_ADJ = d.idecoAdj || 0;
+  MF_BANK_LAST_UPDATE  = d.mfBankLastUpdate  || null;
+  MF_IDECO_LAST_UPDATE = d.mfIdecoLastUpdate || null;
+}
 
 const MISSING_LIST = [
   { name:"SCB タイバーツ口座",     status:"スクリプト作成中",  done:false },
@@ -279,6 +268,8 @@ export default function Dashboard() {
   const [editJa,  setEditJa]  = useState(null);
   const [addMode, setAddMode] = useState(false);
   const [theme,   setTheme]   = useState("light");
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const [assetsError,  setAssetsError]  = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("okano-app-theme") || "light";
@@ -299,6 +290,15 @@ export default function Dashboard() {
       .then(r => r.json())
       .then(d => { setUsdJpy(d.rates?.JPY || null); setUsdLoad(false); })
       .catch(() => setUsdLoad(false));
+  }, []);
+
+  // 資産データ（証券・銀行・外貨・iDeCo・ソニー生命）を実行時に取得
+  // build_assets_json.py が毎営業日 public/data/assets_latest.json を自動更新する
+  useEffect(() => {
+    fetch("/data/assets_latest.json")
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(d => { applyAssetsData(d); setAssetsLoaded(true); })
+      .catch(() => { setAssetsError(true); setAssetsLoaded(true); });
   }, []);
 
   const jaActive = jaList.filter(c => !c.archived);
@@ -341,8 +341,24 @@ export default function Dashboard() {
     </th>
   );
 
+  if (!assetsLoaded) {
+    return (
+      <div style={{ background: C.bg, minHeight: "100vh", color: C.text, fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 14, color: C.muted, fontWeight: 600 }}>資産データを読み込んでいます…</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text, fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", padding: 16, transition: "background 0.3s, color 0.3s" }}>
+
+      {assetsError && (
+        <div style={{ background: isDark ? "#3f1d1d" : "#fef2f2", border: `1px solid ${isDark ? "#7f1d1d" : "#fecaca"}`, color: isDark ? "#fca5a5" : "#b91c1c", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 12, fontWeight: 600 }}>
+          ⚠️ 最新の資産データ取得に失敗しました（assets_latest.json）。表示中の数値が古い可能性があります。
+        </div>
+      )}
 
       {/* ── スマホ画面上部の押し下げ用アクセントバー（高さを2.5倍の90pxに拡張＆ボタン位置調整） ── */}
       <div style={{ 
@@ -666,6 +682,9 @@ export default function Dashboard() {
         <div>
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
             <SecHead title="銀行・現金口座合計（円）" total={BANK_TOTAL}/>
+            {MF_BANK_LAST_UPDATE && (
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>住信SBI系口座 最終取得日: {MF_BANK_LAST_UPDATE}</div>
+            )}
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr><Th>口座</Th><Th>名義</Th><Th right>残高</Th><Th>取得元</Th></tr>
@@ -754,6 +773,9 @@ export default function Dashboard() {
 
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
             <SecHead title="iDeCo（SBI確定拠出年金）" total={IDECO_TOTAL} cost={IDECO_COST} pnl={IDECO_PNL}/>
+            {MF_IDECO_LAST_UPDATE && (
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>最終取得日: {MF_IDECO_LAST_UPDATE}</div>
+            )}
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
