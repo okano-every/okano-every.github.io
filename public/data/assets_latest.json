@@ -1,6 +1,6 @@
 {
   "dataDate": "2026/06/30",
-  "generatedAt": "2026-06-30T18:41:52.450487",
+  "generatedAt": "2026-06-30T19:01:03.466343",
   "rfItems": [
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
@@ -390,7 +390,7 @@
   ],
   "mtTotal": 27382409,
   "mfUnique": 4396145,
-  "idecoAdj": 127663,
+  "idecoAdj": 0,
   "mfBankLastUpdate": "(06/27 21:24)",
   "mfIdecoLastUpdate": "(06/30 15:42)"
 }
