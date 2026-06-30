@@ -53,6 +53,27 @@ function calcJA(c, asOfDate) {
 // 【2026-06-30改修】以下、証券・銀行・外貨・iDeCo・ソニー生命の数値は
 // public/data/assets_latest.json から実行時に fetch して反映する（build_assets_json.py が自動生成）。
 let DATA_DATE = "読み込み中...";
+const DASHBOARD_VERSION = "v3.1";
+
+// ================================================================
+// 日付フォーマット：全ページ共通でyyyy/mm/dd表示に統一するヘルパー
+// ================================================================
+function dataYear() {
+  const m = String(DATA_DATE || "").match(/^(\d{4})/);
+  return m ? Number(m[1]) : new Date().getFullYear();
+}
+function fmtDate(raw) {
+  if (!raw) return "ー";
+  let s = String(raw).trim();
+  s = s.replace(/^\(|\)$/g, ""); // MoneyForward由来の "(06/27 21:24)" 形式の括弧を除去
+  let m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/); // yyyy/mm/dd（時刻有無問わず）
+  if (m) return `${m[1]}/${m[2].padStart(2, "0")}/${m[3].padStart(2, "0")}`;
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); // yyyy-mm-dd（カレンダー入力由来）
+  if (m) return `${m[1]}/${m[2].padStart(2, "0")}/${m[3].padStart(2, "0")}`;
+  m = s.match(/^(\d{1,2})\/(\d{1,2})/); // mm/dd（年なし。Robofolio/MoneyForward由来）→ DATA_DATEの年を補完
+  if (m) return `${dataYear()}/${m[1].padStart(2, "0")}/${m[2].padStart(2, "0")}`;
+  return s;
+}
 
 let RF_ITEMS = [];
 let RF_TOTAL = 0;
@@ -145,6 +166,7 @@ const MISSING_LIST = [
 const TAG_C = { 
   MT: { bg: "#e0f2fe", text: "#0369a1", label: "MoneyTree" }, 
   MF: { bg: "#f3e8ff", text: "#6b21a8", label: "MoneyFwd" }, 
+  MANUAL: { bg: "#fef9c3", text: "#854d0e", label: "手入力" },
   SL: { bg: "#ffedd5", text: "#b45309", label: "SonyLife" }, 
   JA: { bg: "#dcfce7", text: "#15803d", label: "JA共済" } 
 };
@@ -179,6 +201,124 @@ const SecHead = ({ title, total, cost, pnl }) => {
     </div>
   );
 };
+
+// ================================================================
+// 並び替え可能テーブルヘッダー（全タブ共通）
+// 文字列＝50音/アルファベット昇降順、数値＝大小順、日付＝新旧順
+// ================================================================
+function SortTh({ label, sortKey, tableId, getSort, onSort, right, isDate }) {
+  const { key, dir } = getSort(tableId);
+  const active = key === sortKey;
+  return (
+    <th
+      onClick={() => onSort(tableId, sortKey, isDate)}
+      style={{
+        textAlign: right ? "right" : "left", padding: "10px 8px", color: C.muted, fontWeight: 600,
+        fontSize: 12, borderBottom: `2px solid ${C.line}`, whiteSpace: "nowrap", cursor: "pointer", userSelect: "none",
+      }}
+    >
+      {label}
+      <span style={{ marginLeft: 4, fontSize: 10, color: active ? C.acc : C.line }}>
+        {active ? (dir === "asc" ? "▲" : "▼") : "▲▼"}
+      </span>
+    </th>
+  );
+}
+
+// ================================================================
+// 手入力資産（円・米ドル・タイバーツ）：localStorageで管理、履歴を保持
+// 同名項目は最新日付のものをカードに反映し、過去分は履歴として保持
+// ================================================================
+const MANUAL_CASH_KEY = "okano-manual-cash-v1";
+function loadManualCash() {
+  try {
+    const raw = localStorage.getItem(MANUAL_CASH_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+function saveManualCash(list) {
+  try {
+    localStorage.setItem(MANUAL_CASH_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.error("手入力資産の保存に失敗しました", e);
+  }
+}
+function latestManualByName(entries, currency) {
+  const byName = {};
+  entries.filter((e) => e.currency === currency).forEach((e) => {
+    if (!byName[e.name] || e.date > byName[e.name].date) byName[e.name] = e;
+  });
+  return Object.values(byName);
+}
+
+function ManualCashForm({ currency, unitLabel, onSubmit, onCancel }) {
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState(0);
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const fieldStyle = {
+    width: "100%", background: "#ffffff", border: `1px solid ${C.line}`, color: "#0f172a",
+    borderRadius: 8, padding: "8px 12px", fontSize: 13, boxSizing: "border-box", marginTop: 4,
+  };
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "14px 16px", marginTop: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div>
+          <label style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>名称・口座名</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="例：自宅金庫" style={fieldStyle} />
+        </div>
+        <div>
+          <label style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{unitLabel}</label>
+          <input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} style={fieldStyle} />
+        </div>
+        <div>
+          <label style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>日付</label>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={fieldStyle} />
+        </div>
+        <div>
+          <label style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>取得元</label>
+          <div style={{ ...fieldStyle, color: C.muted, background: "#f8fafc" }}>手入力</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        <button
+          onClick={() => { if (name.trim()) onSubmit({ currency, name: name.trim(), amount, date, source: "手入力" }); }}
+          style={{ background: C.acc, border: "none", color: "#fff", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+        >
+          追加
+        </button>
+        <button onClick={onCancel} style={{ background: "#f1f5f9", border: "none", color: "#64748b", borderRadius: 8, padding: "7px 14px", fontSize: 12, cursor: "pointer" }}>
+          キャンセル
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ManualHistoryRow({ name, currency, entries, unitFmt, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const history = entries.filter((e) => e.currency === currency && e.name === name).sort((a, b) => b.date.localeCompare(a.date));
+  if (history.length <= 1) return null;
+  return (
+    <div style={{ marginTop: 2 }}>
+      <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", color: C.acc, fontSize: 11, cursor: "pointer", padding: 0 }}>
+        {open ? "履歴を閉じる ▲" : `履歴を見る（${history.length}件）▼`}
+      </button>
+      {open && (
+        <div style={{ marginTop: 4, paddingLeft: 10, borderLeft: `2px solid ${C.line}` }}>
+          {history.map((h) => (
+            <div key={h.id} style={{ fontSize: 11, color: C.muted, display: "flex", justifyContent: "space-between", gap: 8, padding: "2px 0" }}>
+              <span>{fmtDate(h.date)}</span>
+              <span style={{ fontFamily: "monospace" }}>{unitFmt(h.amount)}</span>
+              <button onClick={() => onDelete(h.id)} style={{ background: "none", border: "none", color: C.red, cursor: "pointer", fontSize: 11 }}>削除</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ================================================================
 // JA共済 フォーム
@@ -265,7 +405,7 @@ export default function Dashboard() {
   const [usdJpy,  setUsdJpy]  = useState(null);
   const [usdLoad, setUsdLoad] = useState(true);
   const [thbJpy,  setThbJpy]  = useState(null);
-  const [bahtAmount, setBahtAmount] = useState(0);
+  const [thbIsFallback, setThbIsFallback] = useState(false);
   const [jaList,  setJaList]  = useState(INIT_JA);
   const [editJa,  setEditJa]  = useState(null);
   const [addMode, setAddMode] = useState(false);
@@ -274,6 +414,9 @@ export default function Dashboard() {
   const [assetsError,  setAssetsError]  = useState(false);
   const [historyRows,  setHistoryRows]  = useState([]);
   const [historyError, setHistoryError] = useState(false);
+  const [manualCash, setManualCash] = useState([]);
+  const [manualFormOpen, setManualFormOpen] = useState(null); // 'JPY' | 'USD' | 'THB' | null
+  const [sortState, setSortState] = useState({}); // { tableId: { key, dir } }
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("okano-app-theme") || "light";
@@ -289,6 +432,36 @@ export default function Dashboard() {
   const isDark = theme === "dark";
   C = getColors(isDark);
 
+  // ── 並び替え（全タブ共通：文字列=50音/英字昇降順、数値=大小順、日付=新旧順） ──
+  const getSort = (tableId) => sortState[tableId] || { key: null, dir: "asc" };
+  const onSort = (tableId, key) => {
+    setSortState((prev) => {
+      const cur = prev[tableId] || { key: null, dir: "asc" };
+      const dir = cur.key === key ? (cur.dir === "asc" ? "desc" : "asc") : "asc";
+      return { ...prev, [tableId]: { key, dir } };
+    });
+  };
+  const applySort = (rows, tableId, dateKeys = []) => {
+    const { key, dir } = getSort(tableId);
+    if (!key) return rows;
+    const isDateKey = dateKeys.includes(key);
+    const sorted = [...rows].sort((a, b) => {
+      let cmp;
+      if (isDateKey) {
+        cmp = fmtDate(a[key]).localeCompare(fmtDate(b[key]));
+      } else {
+        const av = a[key], bv = b[key];
+        if (typeof av === "number" || typeof bv === "number") {
+          cmp = (Number(av) || 0) - (Number(bv) || 0);
+        } else {
+          cmp = String(av ?? "").localeCompare(String(bv ?? ""), "ja");
+        }
+      }
+      return dir === "asc" ? cmp : -cmp;
+    });
+    return sorted;
+  };
+
   useEffect(() => {
     fetch("https://open.er-api.com/v6/latest/USD")
       .then(r => r.json())
@@ -296,20 +469,32 @@ export default function Dashboard() {
       .catch(() => setUsdLoad(false));
   }, []);
 
-  // タイバーツ（SCB口座）：APIスクレイピング非対応のため手入力管理。レートは frankfurter.app のライブ取得
+  // タイバーツ：APIスクレイピング非対応のため手入力管理。レートは frankfurter.app のライブ取得（失敗時は仮レート1THB=4.15円）
   useEffect(() => {
     fetch("https://api.frankfurter.app/latest?from=THB&to=JPY")
-      .then(r => r.json())
-      .then(d => setThbJpy(d.rates?.JPY || null))
-      .catch(() => {});
+      .then(r => { if (!r.ok) throw new Error("rate fetch failed"); return r.json(); })
+      .then(d => {
+        const rate = d.rates?.JPY;
+        if (rate) { setThbJpy(rate); setThbIsFallback(false); }
+        else { setThbJpy(4.15); setThbIsFallback(true); }
+      })
+      .catch(() => { setThbJpy(4.15); setThbIsFallback(true); });
   }, []);
+
+  // 手入力資産（円・米ドル・タイバーツの「タンス預金」等）をlocalStorageから復元
   useEffect(() => {
-    const saved = localStorage.getItem("okano-baht-balance");
-    if (saved !== null) setBahtAmount(Number(saved) || 0);
+    setManualCash(loadManualCash());
   }, []);
-  const updateBaht = (val) => {
-    setBahtAmount(val);
-    localStorage.setItem("okano-baht-balance", String(val));
+  const addManualCash = (entry) => {
+    const next = [...manualCash, { ...entry, id: `MC-${Date.now()}` }];
+    setManualCash(next);
+    saveManualCash(next);
+    setManualFormOpen(null);
+  };
+  const deleteManualCash = (id) => {
+    const next = manualCash.filter((e) => e.id !== id);
+    setManualCash(next);
+    saveManualCash(next);
   };
 
   // 資産データ（証券・銀行・外貨・iDeCo・ソニー生命）を実行時に取得
@@ -547,7 +732,7 @@ export default function Dashboard() {
                   label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
                   {pieData.map((e, i) => <Cell key={i} fill={e.color}/>)}
                 </Pie>
-                <Tooltip formatter={(v) => fmt(v)}/>
+                <Tooltip formatter={(v) => fmt(v)} labelFormatter={fmtDate} />
               </PieChart>
             </ResponsiveContainer>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", marginTop: 12, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
@@ -686,27 +871,29 @@ export default function Dashboard() {
             <span style={{ color: C.green, fontWeight: 700 }}> +{fmt(RF_PNL)}</span>
           </div>
           {["本人","妻","長女","次女","長男"].map(owner => {
-            const items = RF_ITEMS.filter(i => i.owner === owner);
-            if (!items.length) return null;
-            const tot = items.reduce((s, i) => s + i.amount, 0);
-            const pnl = items.reduce((s, i) => s + i.pnl,    0);
+            const rawItems = RF_ITEMS.filter(i => i.owner === owner);
+            if (!rawItems.length) return null;
+            const tableId = `sec_${owner}`;
+            const items = applySort(rawItems, tableId);
+            const tot = rawItems.reduce((s, i) => s + i.amount, 0);
+            const pnl = rawItems.reduce((s, i) => s + i.pnl,    0);
             return (
               <div key={owner} style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-                <SecHead title={`${owner}（${items[0].acc}）`} total={tot} cost={tot-pnl} pnl={pnl}/>
-                {items[0].lastUpdate && (
-                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, marginTop: -4 }}>取得日時: {items[0].lastUpdate}</div>
+                <SecHead title={`${owner}（${rawItems[0].acc}）`} total={tot} cost={tot-pnl} pnl={pnl}/>
+                {rawItems[0].lastUpdate && (
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, marginTop: -4 }}>取得日時: {fmtDate(rawItems[0].lastUpdate)}</div>
                 )}
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr>
-                        <Th>銘柄</Th>
-                        <Th>区分</Th>
-                        <Th right>平均取得単価</Th>
-                        <Th right>保有数量</Th>
-                        <Th right>最新単価</Th>
-                        <Th right>評価額</Th>
-                        <Th right>含み損益</Th>
+                        <SortTh label="銘柄" sortKey="name" tableId={tableId} getSort={getSort} onSort={onSort} />
+                        <SortTh label="区分" sortKey="sub" tableId={tableId} getSort={getSort} onSort={onSort} />
+                        <SortTh label="平均取得単価" sortKey="costPrice" tableId={tableId} getSort={getSort} onSort={onSort} right />
+                        <SortTh label="保有数量" sortKey="qty" tableId={tableId} getSort={getSort} onSort={onSort} right />
+                        <SortTh label="最新単価" sortKey="price" tableId={tableId} getSort={getSort} onSort={onSort} right />
+                        <SortTh label="評価額" sortKey="amount" tableId={tableId} getSort={getSort} onSort={onSort} right />
+                        <SortTh label="含み損益" sortKey="pnl" tableId={tableId} getSort={getSort} onSort={onSort} right />
                         <Th right>配当利回り</Th>
                         <Th right>配当月</Th>
                       </tr>
@@ -743,95 +930,195 @@ export default function Dashboard() {
       )}
 
       {/* ── TAB: 銀行/外貨 ── */}
-      {tab === "banks" && (
+      {tab === "banks" && (() => {
+        const manualJpy = latestManualByName(manualCash, "JPY");
+        const manualUsd = latestManualByName(manualCash, "USD");
+        const manualThb = latestManualByName(manualCash, "THB");
+        const jpyRows = applySort(
+          [...BANK_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualJpy.map(e => ({ name: e.name, amount: e.amount, lastUpdate: e.date, src: "MANUAL" }))],
+          "bank_jpy", ["lastUpdate"]
+        );
+        const jpyTotal = jpyRows.reduce((s, r) => s + Number(r.amount || 0), 0);
+
+        const usdRows = applySort(
+          [...USD_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualUsd.map(e => ({ name: e.name, usd: e.amount, lastUpdate: e.date, src: "MANUAL" }))],
+          "bank_usd", ["lastUpdate"]
+        );
+        const usdRowsTotal = usdRows.reduce((s, r) => s + Number(r.usd || 0), 0);
+
+        const thbRows = applySort(
+          manualThb.map(e => ({ name: e.name, thb: e.amount, lastUpdate: e.date, src: "MANUAL" })),
+          "bank_thb", ["lastUpdate"]
+        );
+        const thbRowsTotal = thbRows.reduce((s, r) => s + Number(r.thb || 0), 0);
+
+        return (
         <div>
+          {/* ── 銀行・現金資産（円） ── */}
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-            <SecHead title="銀行・現金口座合計（円）" total={BANK_TOTAL}/>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>銀行・現金資産</div>
+              <button onClick={() => setManualFormOpen(manualFormOpen === "JPY" ? null : "JPY")} style={{ background: "none", border: `1px solid ${C.acc}`, color: C.acc, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                + 現金手入力
+              </button>
+            </div>
+            {manualFormOpen === "JPY" && (
+              <ManualCashForm currency="JPY" unitLabel="残高（円）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
+            )}
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
               <thead>
-                <tr><Th>口座</Th><Th right>残高</Th><Th>取得日時</Th><Th>取得元</Th></tr>
+                <tr>
+                  <SortTh label="名称・口座名" sortKey="name" tableId="bank_jpy" getSort={getSort} onSort={onSort} />
+                  <SortTh label="JPY残高" sortKey="amount" tableId="bank_jpy" getSort={getSort} onSort={onSort} right />
+                  <SortTh label="最終更新日" sortKey="lastUpdate" tableId="bank_jpy" getSort={getSort} onSort={onSort} isDate />
+                  <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>取得元</th>
+                </tr>
               </thead>
               <tbody>
-                {BANK_ITEMS.map((it, i) => (
+                {jpyRows.map((it, i) => (
                   <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
-                    <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.name}</td>
+                    <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
+                      {it.name}
+                      {it.src === "MANUAL" && <ManualHistoryRow name={it.name} currency="JPY" entries={manualCash} unitFmt={fmt} onDelete={deleteManualCash} />}
+                    </td>
                     <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
-                    <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{it.lastUpdate || "─"}</td>
+                    <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
                     <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, borderBottom: `1px solid ${C.line}`, paddingBottom: 10 }}>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>💵 米ドル資産（MoneyTree集計内）</div>
-              <div style={{ fontSize: 12 }}>
-                {usdLoad
-                  ? <span style={{ color: C.muted }}>取得中…</span>
-                  : usdJpy
-                  ? <span style={{ color: C.green, fontWeight: 700 }}>1 USD = ¥{usdJpy.toFixed(2)}</span>
-                  : <span style={{ color: C.amber }}>レート取得失敗</span>}
-              </div>
-            </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr><Th>名称</Th><Th>名義</Th><Th right>USD残高</Th><Th right>円換算</Th></tr>
-              </thead>
-              <tbody>
-                {USD_ITEMS.map((it, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
-                    <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.name}</td>
-                    <td style={{ padding: "8px", color: C.muted, fontSize: 12 }}>{it.owner}</td>
-                    <td style={{ padding: "8px", textAlign: "right", color: C.amber, fontWeight: 700, fontFamily: "monospace" }}>
-                      ${it.usd.toLocaleString("en-US", { minimumFractionDigits:2 })}
-                    </td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>
-                      {usdJpy ? fmt(Math.round(it.usd * usdJpy)) : "─"}
-                    </td>
-                  </tr>
-                ))}
                 <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
-                  <td colSpan={2} style={{ padding: "10px 8px", fontSize: 13 }}>合計</td>
-                  <td style={{ padding: "10px 8px", textAlign: "right", color: C.amber, fontFamily: "monospace" }}>
-                    ${USD_SUM.toLocaleString("en-US", { minimumFractionDigits:2 })}
-                  </td>
-                  <td style={{ padding: "10px 8px", textAlign: "right", color: C.text, fontFamily: "monospace" }}>
-                    {usdJpy ? fmt(usdJpySum) : "─"}
-                  </td>
+                  <td style={{ padding: "10px 8px" }}>合計</td>
+                  <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace" }}>{fmt(jpyTotal)}</td>
+                  <td colSpan={2}></td>
                 </tr>
               </tbody>
             </table>
           </div>
-        <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginTop: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, borderBottom: `1px solid ${C.line}`, paddingBottom: 10 }}>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>🇹🇭 タイバーツ口座（SCB・手入力）</div>
-              <div style={{ fontSize: 12 }}>
-                {thbJpy ? <span style={{ color: C.green, fontWeight: 700 }}>1 THB = ¥{thbJpy.toFixed(3)}</span> : <span style={{ color: C.muted }}>レート取得中…</span>}
-              </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
-              <div>
-                <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: "block", marginBottom: 4 }}>残高（THB）</label>
-                <input
-                  type="number"
-                  value={bahtAmount}
-                  onChange={e => updateBaht(Number(e.target.value))}
-                  style={{ background: "#ffffff", border: `1px solid ${C.line}`, color: "#0f172a", borderRadius: 8, padding: "8px 12px", fontSize: 14, width: 160, boxSizing: "border-box" }}
-                />
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: C.muted }}>円換算</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: C.text, fontFamily: "monospace" }}>
-                  {thbJpy ? fmt(Math.round(bahtAmount * thbJpy)) : "─"}
+
+          {/* ── 米ドル資産 ── */}
+          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, borderBottom: `1px solid ${C.line}`, paddingBottom: 10, flexWrap: "wrap", gap: 8 }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>💵 米ドル資産</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ fontSize: 12 }}>
+                  {usdLoad
+                    ? <span style={{ color: C.muted }}>取得中…</span>
+                    : usdJpy
+                    ? <span style={{ color: C.green, fontWeight: 700 }}>1 USD = ¥{usdJpy.toFixed(2)}</span>
+                    : <span style={{ color: C.amber }}>レート取得失敗</span>}
                 </div>
+                <button onClick={() => setManualFormOpen(manualFormOpen === "USD" ? null : "USD")} style={{ background: "none", border: `1px solid ${C.acc}`, color: C.acc, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  + 現金手入力
+                </button>
               </div>
             </div>
+            {manualFormOpen === "USD" && (
+              <ManualCashForm currency="USD" unitLabel="残高（USD）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
+            )}
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
+              <thead>
+                <tr>
+                  <SortTh label="名称・口座名" sortKey="name" tableId="bank_usd" getSort={getSort} onSort={onSort} />
+                  <SortTh label="USD残高" sortKey="usd" tableId="bank_usd" getSort={getSort} onSort={onSort} right />
+                  <th style={{ padding: "10px 8px", textAlign: "right", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>円換算</th>
+                  <SortTh label="最終更新日" sortKey="lastUpdate" tableId="bank_usd" getSort={getSort} onSort={onSort} isDate />
+                  <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>取得元</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usdRows.map((it, i) => (
+                  <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
+                    <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
+                      {it.name}
+                      {it.src === "MANUAL" && <ManualHistoryRow name={it.name} currency="USD" entries={manualCash} unitFmt={(v) => "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: 2 })} onDelete={deleteManualCash} />}
+                    </td>
+                    <td style={{ padding: "8px", textAlign: "right", color: C.amber, fontWeight: 700, fontFamily: "monospace" }}>
+                      ${Number(it.usd).toLocaleString("en-US", { minimumFractionDigits:2 })}
+                    </td>
+                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>
+                      {usdJpy ? fmt(Math.round(it.usd * usdJpy)) : "─"}
+                    </td>
+                    <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
+                    <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
+                  </tr>
+                ))}
+                <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
+                  <td style={{ padding: "10px 8px" }}>合計</td>
+                  <td style={{ padding: "10px 8px", textAlign: "right", color: C.amber, fontFamily: "monospace" }}>
+                    ${usdRowsTotal.toLocaleString("en-US", { minimumFractionDigits:2 })}
+                  </td>
+                  <td style={{ padding: "10px 8px", textAlign: "right", color: C.text, fontFamily: "monospace" }}>
+                    {usdJpy ? fmt(Math.round(usdRowsTotal * usdJpy)) : "─"}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* ── タイバーツ資産 ── */}
+          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginTop: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, borderBottom: `1px solid ${C.line}`, paddingBottom: 10, flexWrap: "wrap", gap: 8 }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>🇹🇭 タイバーツ資産</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ fontSize: 12 }}>
+                  {thbJpy
+                    ? <span style={{ color: thbIsFallback ? C.amber : C.green, fontWeight: 700 }}>1 THB = ¥{thbJpy.toFixed(3)}{thbIsFallback ? "（仮）" : ""}</span>
+                    : <span style={{ color: C.muted }}>レート取得中…</span>}
+                </div>
+                <button onClick={() => setManualFormOpen(manualFormOpen === "THB" ? null : "THB")} style={{ background: "none", border: `1px solid ${C.acc}`, color: C.acc, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  + 現金手入力
+                </button>
+              </div>
+            </div>
+            {manualFormOpen === "THB" && (
+              <ManualCashForm currency="THB" unitLabel="残高（THB）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
+            )}
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
+              <thead>
+                <tr>
+                  <SortTh label="名称・口座名" sortKey="name" tableId="bank_thb" getSort={getSort} onSort={onSort} />
+                  <SortTh label="THB残高" sortKey="thb" tableId="bank_thb" getSort={getSort} onSort={onSort} right />
+                  <th style={{ padding: "10px 8px", textAlign: "right", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>円換算</th>
+                  <SortTh label="最終更新日" sortKey="lastUpdate" tableId="bank_thb" getSort={getSort} onSort={onSort} isDate />
+                  <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>取得元</th>
+                </tr>
+              </thead>
+              <tbody>
+                {thbRows.map((it, i) => (
+                  <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
+                    <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
+                      {it.name}
+                      <ManualHistoryRow name={it.name} currency="THB" entries={manualCash} unitFmt={(v) => "฿" + Number(v).toLocaleString("en-US")} onDelete={deleteManualCash} />
+                    </td>
+                    <td style={{ padding: "8px", textAlign: "right", color: C.amber, fontWeight: 700, fontFamily: "monospace" }}>
+                      ฿{Number(it.thb).toLocaleString("en-US")}
+                    </td>
+                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>
+                      {thbJpy ? fmt(Math.round(it.thb * thbJpy)) : "─"}
+                    </td>
+                    <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
+                    <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
+                  </tr>
+                ))}
+                {thbRows.length === 0 && (
+                  <tr><td colSpan={5} style={{ padding: "16px 8px", textAlign: "center", color: C.muted, fontSize: 12 }}>「+ 現金手入力」から登録してください</td></tr>
+                )}
+                {thbRows.length > 0 && (
+                  <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
+                    <td style={{ padding: "10px 8px" }}>合計</td>
+                    <td style={{ padding: "10px 8px", textAlign: "right", color: C.amber, fontFamily: "monospace" }}>฿{thbRowsTotal.toLocaleString("en-US")}</td>
+                    <td style={{ padding: "10px 8px", textAlign: "right", color: C.text, fontFamily: "monospace" }}>{thbJpy ? fmt(Math.round(thbRowsTotal * thbJpy)) : "─"}</td>
+                    <td colSpan={2}></td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 10 }}>※ SCB（タイ）はAPI/スクレイピング非対応のため手入力管理。総合資産（GRAND_TOTAL）には現状未加算です</div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── TAB: 保険/年金 ── */}
       {tab === "insurance" && (
@@ -840,10 +1127,16 @@ export default function Dashboard() {
             <SecHead title="ソニー生命（解約返戻金）" total={SONY_TOTAL} cost={SONY_COST} pnl={SONY_PNL}/>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr><Th>契約</Th><Th>証券番号</Th><Th right>解約返戻金</Th><Th right>払込保険料</Th><Th right>損益</Th></tr>
+                <tr>
+                  <SortTh label="契約" sortKey="name" tableId="sony" getSort={getSort} onSort={onSort} />
+                  <SortTh label="証券番号" sortKey="certNo" tableId="sony" getSort={getSort} onSort={onSort} />
+                  <SortTh label="解約返戻金" sortKey="amount" tableId="sony" getSort={getSort} onSort={onSort} right />
+                  <SortTh label="払込保険料" sortKey="cost" tableId="sony" getSort={getSort} onSort={onSort} right />
+                  <Th right>損益</Th>
+                </tr>
               </thead>
               <tbody>
-                {SONY_ITEMS.map(it => {
+                {applySort(SONY_ITEMS, "sony").map(it => {
                   const gain = it.amount - it.cost;
                   return (
                     <tr key={it.id} style={{ borderBottom: `1px solid ${C.line}` }}>
@@ -862,25 +1155,25 @@ export default function Dashboard() {
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
             <SecHead title="iDeCo（SBI確定拠出年金）" total={IDECO_TOTAL} cost={IDECO_COST} pnl={IDECO_PNL}/>
             {MF_IDECO_LAST_UPDATE && (
-              <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>最終取得日: {MF_IDECO_LAST_UPDATE}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>最終取得日: {fmtDate(MF_IDECO_LAST_UPDATE)}</div>
             )}
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr>
-                    <Th>銘柄</Th>
+                    <SortTh label="銘柄" sortKey="name" tableId="ideco" getSort={getSort} onSort={onSort} />
                     <Th right>平均取得単価</Th>
                     <Th right>保有数量</Th>
                     <Th right>最新単価</Th>
-                    <Th right>取得価額</Th>
-                    <Th right>現在価値</Th>
-                    <Th right>含み益</Th>
+                    <SortTh label="取得価額" sortKey="cost" tableId="ideco" getSort={getSort} onSort={onSort} right />
+                    <SortTh label="現在価値" sortKey="amount" tableId="ideco" getSort={getSort} onSort={onSort} right />
+                    <SortTh label="含み益" sortKey="pnl" tableId="ideco" getSort={getSort} onSort={onSort} right />
                     <Th right>配当利回り</Th>
                     <Th right>配当月</Th>
                   </tr>
                 </thead>
                 <tbody>
-                  {IDECO_ITEMS.map((it, i) => (
+                  {applySort(IDECO_ITEMS, "ideco").map((it, i) => (
                     <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
                       <td style={{ padding: "10px 8px", color: C.text, fontWeight: 600, whiteSpace: "nowrap" }}>{it.name} <Tag src="MF"/></td>
                       <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", color: C.muted }}>{it.costPrice}</td>
@@ -940,7 +1233,7 @@ export default function Dashboard() {
                       ["証券番号",   c.certNo],
                       ["契約者/受取人", `${c.holder} / ${c.beneficiary}`],
                       ["積立額",     `¥${c.monthlyPayment.toLocaleString()}/月`],
-                      ["契約開始日", c.startDate],
+                      ["契約開始日", fmtDate(c.startDate)],
                       ["積立月数",   `${c.months}ヶ月（${(c.months/12).toFixed(1)}年）`],
                       ["金利設定",   `${(c.rate1*100).toFixed(2)}%(前${c.rate1Years}年) → ${(c.rate2*100).toFixed(2)}%`],
                     ].map(([k, v]) => (
@@ -1010,9 +1303,9 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} tickFormatter={fmtDate} />
                     <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
-                    <Tooltip formatter={(v) => fmt(v)} />
+                    <Tooltip formatter={(v) => fmt(v)} labelFormatter={fmtDate} />
                     <Line type="monotone" dataKey="grand" name="総資産" stroke={C.acc} strokeWidth={2.5} dot={{ r: 3 }} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -1041,9 +1334,15 @@ export default function Dashboard() {
                   <div>
                     <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>※ 現時点（{DATA_DATE}）の銘柄別内訳です。過去推移は未収集のため表示できません。</div>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                      <thead><tr><Th>銘柄</Th><Th>名義</Th><Th right>評価額</Th></tr></thead>
+                      <thead>
+                        <tr>
+                          <SortTh label="銘柄" sortKey="name" tableId="trend_breakdown" getSort={getSort} onSort={onSort} />
+                          <SortTh label="名義" sortKey="owner" tableId="trend_breakdown" getSort={getSort} onSort={onSort} />
+                          <SortTh label="評価額" sortKey="amount" tableId="trend_breakdown" getSort={getSort} onSort={onSort} right />
+                        </tr>
+                      </thead>
                       <tbody>
-                        {[...RF_ITEMS].sort((a, b) => b.amount - a.amount).map((it, i) => (
+                        {(getSort("trend_breakdown").key ? applySort(RF_ITEMS, "trend_breakdown") : [...RF_ITEMS].sort((a, b) => b.amount - a.amount)).map((it, i) => (
                           <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
                             <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.name}</td>
                             <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{it.owner}</td>
@@ -1119,7 +1418,7 @@ export default function Dashboard() {
 
       {/* ── フッター ── */}
       <div style={{ marginTop: 24, fontSize: 11, color: C.muted, textAlign: "center", borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
-        岡野ファミリー 資産管理 v3.0 ｜ {DATA_DATE}
+        岡野ファミリー 資産管理 {DASHBOARD_VERSION} ｜ {DATA_DATE}
       </div>
     </div>
   );

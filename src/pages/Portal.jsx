@@ -65,11 +65,21 @@ const Icons = {
       <polyline points="10 9 9 9 8 9" />
     </svg>
   ),
+  savings: (color) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 5c-1.5-1.5-3-2-5-2-4 0-7 3-7 7v1H5l-2 2 2 2h2c0 2 1 4 3 5" />
+      <path d="M19 5l2 2-2 2" />
+      <circle cx="14" cy="11" r="0.5" fill={color} />
+      <path d="M9 18h7" />
+    </svg>
+  ),
 };
 
 const APPS = [
   { id: "dashboard", icon: "dashboard", name: "資産ダッシュボード", desc: "家族全員の資産を一元管理。推移グラフ・目標進捗", path: "/dashboard", colorKey: "acc", ready: true },
   { id: "fx", icon: "fx", name: "FXトラッカー", desc: "HFM / Exness / XM 取引履歴・損益・残高推移（2023-06〜）", path: "/fx", colorKey: "green", ready: true },
+  { id: "savings", icon: "savings", name: "積立設定管理", desc: "SBI・日興・iDeCoの月次積立を一元管理。決済方法/預り区分別の集計", path: "/savings", colorKey: "teal", ready: true },
+  { id: "changelog", icon: "report", name: "更新履歴", desc: "アプリのバージョン履歴と変更点を確認", path: "/changelog", colorKey: "pink", ready: true },
   { id: "crypto", icon: "crypto", name: "暗号資産", desc: "保有コイン・評価額の管理", path: "/crypto", colorKey: "amber", ready: false },
   { id: "education", icon: "education", name: "教育費カレンダー", desc: "子供3人の進学タイムライン・費用計画", path: "/education", colorKey: "purple", ready: false },
   { id: "networth", icon: "networth", name: "純資産サマリー", desc: "不動産・退職金を含む総資産見通し", path: "/networth", colorKey: "teal", ready: false },
@@ -105,6 +115,10 @@ export default function Portal() {
   const C = getColors(isDark);
 
   const navigate    = (path) => { window.location.href = path; };
+  const handleLogout = () => {
+    sessionStorage.removeItem("okano-auth-session");
+    window.location.href = "/login";
+  };
   const lastUpdated = getLastUpdated();
   const now         = new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
 
@@ -133,7 +147,7 @@ export default function Portal() {
             border: "none",
             borderRadius: "20px",
             color: "#fff",
-            padding: "6px 16px",        // タップ領域を少し広げて押しやすく
+            padding: "6px 16px",
             fontSize: "12px",
             fontWeight: "700",
             cursor: "pointer",
@@ -145,6 +159,22 @@ export default function Portal() {
           }}
         >
           {isDark ? "☀️ LIGHT" : "🌙 DARK"}
+        </button>
+        <button
+          onClick={handleLogout}
+          style={{
+            background: "rgba(255, 255, 255, 0.15)",
+            border: "1px solid rgba(255,255,255,0.3)",
+            borderRadius: "20px",
+            color: "#fff",
+            padding: "6px 14px",
+            fontSize: "12px",
+            fontWeight: "600",
+            cursor: "pointer",
+            outline: "none",
+          }}
+        >
+          🔐 ログアウト
         </button>
       </div>
 
