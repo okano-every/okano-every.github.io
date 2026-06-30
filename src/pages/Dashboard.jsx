@@ -131,7 +131,7 @@ function applyAssetsData(d) {
 }
 
 const MISSING_LIST = [
-  { name:"SCB タイバーツ口座",     status:"スクリプト作成中",  done:false },
+  { name:"SCB タイバーツ口座",     status:"✓ 銀行/外貨タブに手入力欄を追加（総合資産には未加算）",  done:true },
   { name:"暗号資産（各ウォレット）",status:"複雑なため検討中",  done:false },
   { name:"FX残高（Equity）",       status:"✓ FXタブに分離済み", done:true  },
   { name:"退職金・確定拠出(DB)",   status:"将来（現職継続中）", done:false },
@@ -264,6 +264,8 @@ export default function Dashboard() {
   const [tab,     setTab]     = useState("summary");
   const [usdJpy,  setUsdJpy]  = useState(null);
   const [usdLoad, setUsdLoad] = useState(true);
+  const [thbJpy,  setThbJpy]  = useState(null);
+  const [bahtAmount, setBahtAmount] = useState(0);
   const [jaList,  setJaList]  = useState(INIT_JA);
   const [editJa,  setEditJa]  = useState(null);
   const [addMode, setAddMode] = useState(false);
@@ -293,6 +295,22 @@ export default function Dashboard() {
       .then(d => { setUsdJpy(d.rates?.JPY || null); setUsdLoad(false); })
       .catch(() => setUsdLoad(false));
   }, []);
+
+  // タイバーツ（SCB口座）：APIスクレイピング非対応のため手入力管理。レートは frankfurter.app のライブ取得
+  useEffect(() => {
+    fetch("https://api.frankfurter.app/latest?from=THB&to=JPY")
+      .then(r => r.json())
+      .then(d => setThbJpy(d.rates?.JPY || null))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    const saved = localStorage.getItem("okano-baht-balance");
+    if (saved !== null) setBahtAmount(Number(saved) || 0);
+  }, []);
+  const updateBaht = (val) => {
+    setBahtAmount(val);
+    localStorage.setItem("okano-baht-balance", String(val));
+  };
 
   // 資産データ（証券・銀行・外貨・iDeCo・ソニー生命）を実行時に取得
   // build_assets_json.py が毎営業日 public/data/assets_latest.json を自動更新する
@@ -486,14 +504,17 @@ export default function Dashboard() {
           {/* ミニカードグリッド */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10, marginBottom: 16 }}>
             {[
-              { label:"証券（含み益）",    value:fmt(RF_TOTAL),              sub:`+${fmt(RF_PNL)}`,          clr:C.acc   },
-              { label:"現金・預金",        value:fmt(BANK_TOTAL),            sub:"SMBC/UFJ/住信SBI",          clr:"#0284c7" },
-              { label:"保険・年金合計",    value:fmt(SONY_TOTAL + jaTotal),  sub:"ソニー生命＋JA共済",        clr:"#10b981" },
-              { label:"iDeCo（評価益）",  value:fmt(IDECO_TOTAL),           sub:`+${fmt(IDECO_PNL)}`,       clr:C.purple  },
-              { label:"債券",            value:fmt(pieBonds),               sub:"国内債券・証券口座内現金等",    clr:"#6366f1" },
-              { label:"外貨",            value:fmt(usdJpySum),              sub:`${USD_SUM.toLocaleString("en-US",{minimumFractionDigits:2})}`, clr:"#f59e0b" },
-            ].map(({ label, value, sub, clr }) => (
-              <div key={label} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+              { label:"証券（含み益）",    value:fmt(RF_TOTAL),              sub:`+${fmt(RF_PNL)}`,          clr:C.acc,     tab:"securities" },
+              { label:"現金・預金",        value:fmt(BANK_TOTAL),            sub:"SMBC/UFJ/住信SBI",          clr:"#0284c7", tab:"banks" },
+              { label:"保険・年金合計",    value:fmt(SONY_TOTAL + jaTotal),  sub:"ソニー生命＋JA共済",        clr:"#10b981", tab:"insurance" },
+              { label:"iDeCo（評価益）",  value:fmt(IDECO_TOTAL),           sub:`+${fmt(IDECO_PNL)}`,       clr:C.purple,  tab:"insurance" },
+              { label:"債券",            value:fmt(pieBonds),               sub:"国内債券・証券口座内現金等",    clr:"#6366f1", tab:"banks" },
+              { label:"外貨",            value:fmt(usdJpySum),              sub:"$" + USD_SUM.toLocaleString("en-US",{minimumFractionDigits:2}), clr:"#f59e0b", tab:"banks" },
+            ].map(({ label, value, sub, clr, tab: targetTab }) => (
+              <div key={label} onClick={() => setTab(targetTab)} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", cursor: "pointer", transition: "transform .15s, box-shadow .15s" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 10px -3px rgba(0,0,0,0.12)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.02)"; }}
+              >
                 <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>{label}</div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: clr, fontFamily: "monospace" }}>{value}</div>
                 <div style={{ fontSize: 11, color: sub.startsWith("+") ? C.green : C.muted, marginTop: 4, fontWeight: 600 }}>{sub}</div>
@@ -782,6 +803,32 @@ export default function Dashboard() {
                 </tr>
               </tbody>
             </table>
+          </div>
+        <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginTop: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, borderBottom: `1px solid ${C.line}`, paddingBottom: 10 }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>🇹🇭 タイバーツ口座（SCB・手入力）</div>
+              <div style={{ fontSize: 12 }}>
+                {thbJpy ? <span style={{ color: C.green, fontWeight: 700 }}>1 THB = ¥{thbJpy.toFixed(3)}</span> : <span style={{ color: C.muted }}>レート取得中…</span>}
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: "block", marginBottom: 4 }}>残高（THB）</label>
+                <input
+                  type="number"
+                  value={bahtAmount}
+                  onChange={e => updateBaht(Number(e.target.value))}
+                  style={{ background: "#ffffff", border: `1px solid ${C.line}`, color: "#0f172a", borderRadius: 8, padding: "8px 12px", fontSize: 14, width: 160, boxSizing: "border-box" }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: C.muted }}>円換算</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: C.text, fontFamily: "monospace" }}>
+                  {thbJpy ? fmt(Math.round(bahtAmount * thbJpy)) : "─"}
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 10 }}>※ SCB（タイ）はAPI/スクレイピング非対応のため手入力管理。総合資産（GRAND_TOTAL）には現状未加算です</div>
           </div>
         </div>
       )}
