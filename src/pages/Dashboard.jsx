@@ -330,38 +330,41 @@ export default function Dashboard() {
   const invPnl   = invValue - invCost;
 
   const pieMisc = Math.max(0, GRAND_TOTAL - BANK_TOTAL - RF_TOTAL - IDECO_TOTAL - SONY_TOTAL - jaTotal);
+  const usdJpySum = usdJpy ? Math.round(USD_SUM * usdJpy) : 0;
+  const pieBonds  = Math.max(0, pieMisc - usdJpySum); // 「他」を含まず、外貨を差し引いた残差を「債券」として表示（主に国内債券・証券口座内現金）
   const pieData = [
     { name:"現金・預金（円）",  value:BANK_TOTAL,  color:"#0284c7" },
     { name:"証券（投信/株）",  value:RF_TOTAL,    color:"#0052cc" },
-    { name:"債券・外貨・他",   value:pieMisc,     color:"#6366f1" },
+    { name:"債券",                value:pieBonds,    color:"#6366f1" },
+    { name:"外貨",                value:usdJpySum,   color:"#f59e0b" },
     { name:"iDeCo",           value:IDECO_TOTAL, color:C.purple },
     { name:"ソニー生命",       value:SONY_TOTAL,  color:"#f97316" },
     { name:"JA共済",           value:jaTotal,     color:"#10b981" },
   ];
 
-  const usdJpySum = usdJpy ? Math.round(USD_SUM * usdJpy) : 0;
-
   // 資産推移データ加工：同一日付は最新行を採用して重複を集約し、日付昇順に並べ替え
   // JA共済は契約条件から任意の過去日付で計算可能なため（CSVに保存不要）、各日付でcalcJAを適用して遷及算出
+  // 「総資産」はサマリータブのGRAND_TOTALと完全に同じ式（mt+mf+sony+idecoAdj+ja）で計算
   const historyByDate = new Map();
   historyRows.forEach(r => {
     const asOf = new Date(r.date);
     const jaAtDate = jaActive.reduce((s, c) => s + calcJA(c, asOf).value, 0);
+    const mt = Number(r.mt_total) || 0;
+    const mf = Number(r.mf_unique) || 0;
+    const sony = Number(r.sony_total) || 0;
+    const idecoAdjAtDate = r.ideco_adj !== undefined ? (Number(r.ideco_adj) || 0) : 0;
     historyByDate.set(r.date, {
       date: r.date,
-      grand: Number(r.grand_total) || 0,
+      grand: mt + mf + sony + idecoAdjAtDate + jaAtDate,
       securities: Number(r.rf_securities) || 0,
       ideco: Number(r.ideco_total) || 0,
       bank: Number(r.bank_total) || 0,
-      sony: Number(r.sony_total) || 0,
+      sony: sony,
       ja: jaAtDate,
-      insurance: (Number(r.sony_total) || 0) + jaAtDate,
+      insurance: sony + jaAtDate,
     });
   });
   const trendData = Array.from(historyByDate.values()).sort((a, b) => a.date.localeCompare(b.date));
-  const trendLatest = trendData[trendData.length - 1];
-  const trendFirst  = trendData[0];
-  const trendChange = trendLatest && trendFirst ? trendLatest.grand - trendFirst.grand : 0;
   const trendHasIdeco = trendData.some(d => d.ideco > 0);
   const trendHasBank  = trendData.some(d => d.bank  > 0);
 
@@ -487,6 +490,8 @@ export default function Dashboard() {
               { label:"現金・預金",        value:fmt(BANK_TOTAL),            sub:"SMBC/UFJ/住信SBI",          clr:"#0284c7" },
               { label:"保険・年金合計",    value:fmt(SONY_TOTAL + jaTotal),  sub:"ソニー生命＋JA共済",        clr:"#10b981" },
               { label:"iDeCo（評価益）",  value:fmt(IDECO_TOTAL),           sub:`+${fmt(IDECO_PNL)}`,       clr:C.purple  },
+              { label:"債券",            value:fmt(pieBonds),               sub:"国内債券・証券口座内現金等",    clr:"#6366f1" },
+              { label:"外貨",            value:fmt(usdJpySum),              sub:`${USD_SUM.toLocaleString("en-US",{minimumFractionDigits:2})}`, clr:"#f59e0b" },
             ].map(({ label, value, sub, clr }) => (
               <div key={label} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
                 <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>{label}</div>
@@ -534,7 +539,7 @@ export default function Dashboard() {
               ))}
             </div>
             <div style={{ marginTop: 10, fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
-              ※ 債券・外貨・他 = 国内債券¥3M＋米ドル資産＋証券口座内現金（MT集計から逆算）
+              ※ 債券 = 国内債券＋証券口座内現金等（MT集計から逆算）　※ 外貨 = 米ドル建資産（ライブレート換算）
             </div>
           </div>
         </div>
@@ -586,7 +591,8 @@ export default function Dashboard() {
                   {/* 参考データ */}
                   {[
                     { label:"現金・預金（参考）",  value:BANK_TOTAL },
-                    { label:"債券・外貨・他（参考）", value:pieMisc },
+                    { label:"債券（参考）", value:pieBonds },
+                    { label:"外貨（参考）", value:usdJpySum },
                   ].map(r => (
                     <tr key={r.label} style={{ borderBottom: `1px solid ${C.line}` }}>
                       <td style={{ padding: "8px 8px", fontSize: 12, color: C.muted }}>{r.label}</td>
@@ -666,6 +672,9 @@ export default function Dashboard() {
             return (
               <div key={owner} style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
                 <SecHead title={`${owner}（${items[0].acc}）`} total={tot} cost={tot-pnl} pnl={pnl}/>
+                {items[0].lastUpdate && (
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, marginTop: -4 }}>取得日時: {items[0].lastUpdate}</div>
+                )}
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
@@ -717,19 +726,16 @@ export default function Dashboard() {
         <div>
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
             <SecHead title="銀行・現金口座合計（円）" total={BANK_TOTAL}/>
-            {MF_BANK_LAST_UPDATE && (
-              <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>住信SBI系口座 最終取得日: {MF_BANK_LAST_UPDATE}</div>
-            )}
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr><Th>口座</Th><Th>名義</Th><Th right>残高</Th><Th>取得元</Th></tr>
+                <tr><Th>口座</Th><Th right>残高</Th><Th>取得日時</Th><Th>取得元</Th></tr>
               </thead>
               <tbody>
                 {BANK_ITEMS.map((it, i) => (
                   <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
                     <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.name}</td>
-                    <td style={{ padding: "8px", color: C.muted }}>{it.owner}</td>
                     <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
+                    <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{it.lastUpdate || "─"}</td>
                     <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
                   </tr>
                 ))}
@@ -951,22 +957,9 @@ export default function Dashboard() {
           ) : (
             <>
               {/* — 一番上：総合資産の推移 — */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10, marginBottom: 16 }}>
-                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>最新の記録総資産（MT基準）</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: C.acc, fontFamily: "monospace" }}>{fmt(trendLatest.grand)}</div>
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4, fontWeight: 600 }}>{trendLatest.date}</div>
-                </div>
-                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>記録開始からの増減</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: pnlClr(trendChange), fontFamily: "monospace" }}>{sgn(trendChange)}{fmt(trendChange)}</div>
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4, fontWeight: 600 }}>{trendFirst.date} 〜 {trendLatest.date}（{trendData.length}記録）</div>
-                </div>
-              </div>
-
               <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 20, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>📊 総合資産の推移</div>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>※ MoneyTree基準の簡易合計です（サマリータブの総資産とは定義が異なります）</div>
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>※ サマリータブの総合資産と同一の計算式です（JA共済は契約条件から遷及計算）</div>
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
