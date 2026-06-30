@@ -1,0 +1,398 @@
+{
+  "dataDate": "2026/06/30",
+  "generatedAt": "2026-06-30T15:29:53.481633",
+  "rfItems": [
+    {
+      "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
+      "sub": "特定",
+      "amount": 218036,
+      "pnl": 8036,
+      "owner": "本人",
+      "acc": "SBI",
+      "costPrice": 42102.0,
+      "qty": 49879,
+      "price": 43713.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
+      "sub": "NISA",
+      "amount": 112045,
+      "pnl": 12045,
+      "owner": "本人",
+      "acc": "SBI",
+      "costPrice": 39014.0,
+      "qty": 25632,
+      "price": 43713.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ｅＭＡＸＩＳ Ｎｅｏ 宇宙開発",
+      "sub": "特定",
+      "amount": 2750,
+      "pnl": 250,
+      "owner": "本人",
+      "acc": "SBI",
+      "costPrice": 51653.0,
+      "qty": 484,
+      "price": 56819.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 全世界株式",
+      "sub": "特定",
+      "amount": 690086,
+      "pnl": 30085,
+      "owner": "本人",
+      "acc": "SBI",
+      "costPrice": 35913.0,
+      "qty": 183778,
+      "price": 37550.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 全世界株式",
+      "sub": "NISA",
+      "amount": 3685742,
+      "pnl": 853703,
+      "owner": "本人",
+      "acc": "SBI",
+      "costPrice": 28852.55,
+      "qty": 981556,
+      "price": 37550.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ｉＳ米国債七十",
+      "sub": "NISA",
+      "amount": 2049021,
+      "pnl": 48741,
+      "owner": "本人",
+      "acc": "SBI",
+      "costPrice": 316.0,
+      "qty": 6330,
+      "price": 323.7,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ｉＳ米国債三七ヘジ",
+      "sub": "特定",
+      "amount": 2011475,
+      "pnl": -25925,
+      "owner": "本人",
+      "acc": "SBI",
+      "costPrice": 668.0,
+      "qty": 3050,
+      "price": 659.5,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ニッセイ−＜購入・換金手数料なし＞ニッセイＮＡＳＤＡＱ１００インデックスファンド",
+      "sub": "特定",
+      "amount": 32843,
+      "pnl": 2843,
+      "owner": "本人",
+      "acc": "SBI",
+      "costPrice": 25655.0,
+      "qty": 11694,
+      "price": 28086.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ＳＢＩ−ＳＢＩ・Ｖ・米国高配当株式インデックス・ファンド",
+      "sub": "NISA",
+      "amount": 1573352,
+      "pnl": 363676,
+      "owner": "本人",
+      "acc": "SBI",
+      "costPrice": 19249.0,
+      "qty": 628436,
+      "price": 25036.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
+      "sub": "NISA",
+      "amount": 169291,
+      "pnl": 9291,
+      "owner": "妻",
+      "acc": "SBI",
+      "costPrice": 41314.0,
+      "qty": 38728,
+      "price": 43713.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 全世界株式",
+      "sub": "NISA",
+      "amount": 235663,
+      "pnl": 15658,
+      "owner": "妻",
+      "acc": "SBI",
+      "costPrice": 35055.0,
+      "qty": 62760,
+      "price": 37550.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ニッセイ−＜購入・換金手数料なし＞ニッセイＮＡＳＤＡＱ１００インデックスファンド",
+      "sub": "NISA",
+      "amount": 164199,
+      "pnl": 14195,
+      "owner": "妻",
+      "acc": "SBI",
+      "costPrice": 25658.0,
+      "qty": 58463,
+      "price": 28086.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "日本株配当オープン",
+      "sub": "NISA",
+      "amount": 731,
+      "pnl": 65,
+      "owner": "妻",
+      "acc": "SBI",
+      "costPrice": 15708.0,
+      "qty": 424,
+      "price": 17251.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ＳＢＩ−ＳＢＩ・Ｖ・米国高配当株式インデックス・ファンド",
+      "sub": "NISA",
+      "amount": 161695,
+      "pnl": 29328,
+      "owner": "妻",
+      "acc": "SBI",
+      "costPrice": 12511.0,
+      "qty": 105801,
+      "price": 15283.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "日本株配当オープン",
+      "sub": "特定",
+      "amount": 550355,
+      "pnl": 46401,
+      "owner": "長女",
+      "acc": "日興",
+      "costPrice": 15294.74,
+      "qty": 329495,
+      "price": 16703.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "楽天・全米株式インデックス・ファンド",
+      "sub": "特定",
+      "amount": 237929,
+      "pnl": 57929,
+      "owner": "長女",
+      "acc": "日興",
+      "costPrice": 33313.6,
+      "qty": 54032,
+      "price": 44035.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
+      "sub": "特定",
+      "amount": 770837,
+      "pnl": 100837,
+      "owner": "次女",
+      "acc": "日興",
+      "costPrice": 37905.15,
+      "qty": 176757,
+      "price": 43610.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
+      "sub": "特定",
+      "amount": 281572,
+      "pnl": 22572,
+      "owner": "長男",
+      "acc": "日興",
+      "costPrice": 40114.0,
+      "qty": 64566,
+      "price": 43610.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 全世界株式",
+      "sub": "特定",
+      "amount": 124059,
+      "pnl": 32060,
+      "owner": "長男",
+      "acc": "日興",
+      "costPrice": 27556.46,
+      "qty": 33386,
+      "price": 37159.0,
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "ＳＢＩ−ＳＢＩ・Ｖ・米国高配当株式インデックス・ファンド",
+      "sub": "特定",
+      "amount": 278484,
+      "pnl": 19484,
+      "owner": "長男",
+      "acc": "日興",
+      "costPrice": 22937.41,
+      "qty": 112916,
+      "price": 24663.0,
+      "divYield": "-",
+      "divMonth": "-"
+    }
+  ],
+  "bankItems": [
+    {
+      "name": "SMBC 本人",
+      "amount": 2233419,
+      "src": "MT",
+      "owner": "本人"
+    },
+    {
+      "name": "SMBC 妻",
+      "amount": 837749,
+      "src": "MT",
+      "owner": "妻"
+    },
+    {
+      "name": "SMBC 長女",
+      "amount": 10074,
+      "src": "MT",
+      "owner": "長女"
+    },
+    {
+      "name": "SMBC 次女",
+      "amount": 10074,
+      "src": "MT",
+      "owner": "次女"
+    },
+    {
+      "name": "SMBC 長男",
+      "amount": 10166,
+      "src": "MT",
+      "owner": "長男"
+    },
+    {
+      "name": "UFJ 本人",
+      "amount": 566,
+      "src": "MT",
+      "owner": "本人"
+    },
+    {
+      "name": "住信SBI 代表口座",
+      "amount": 114,
+      "src": "MF",
+      "owner": "本人"
+    },
+    {
+      "name": "住信SBI ハイブリッド",
+      "amount": 4396031,
+      "src": "MF",
+      "owner": "本人"
+    }
+  ],
+  "usdItems": [
+    {
+      "name": "米ドル建債券（本人/特定）",
+      "usd": 14816.34,
+      "owner": "本人"
+    },
+    {
+      "name": "米ドル現金（本人）",
+      "usd": 7000.0,
+      "owner": "本人"
+    },
+    {
+      "name": "米ドル現金（妻）",
+      "usd": 7000.0,
+      "owner": "妻"
+    }
+  ],
+  "idecoItems": [
+    {
+      "name": "eMAXIS Slim 国内株式(TOPIX)",
+      "amount": 14676,
+      "cost": 11295,
+      "pnl": 3381,
+      "costPrice": "-",
+      "qty": "-",
+      "price": "-",
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "eMAXIS Slim 全世界株式(除く日本)",
+      "amount": 112673,
+      "cost": 93245,
+      "pnl": 19428,
+      "costPrice": "-",
+      "qty": "-",
+      "price": "-",
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "eMAXIS Slim 米国株式(S&P500)",
+      "amount": 1639,
+      "cost": 1268,
+      "pnl": 371,
+      "costPrice": "-",
+      "qty": "-",
+      "price": "-",
+      "divYield": "-",
+      "divMonth": "-"
+    },
+    {
+      "name": "eMAXIS Slim 新興国株式インデックス",
+      "amount": 878,
+      "cost": 561,
+      "pnl": 317,
+      "costPrice": "-",
+      "qty": "-",
+      "price": "-",
+      "divYield": "-",
+      "divMonth": "-"
+    }
+  ],
+  "sonyItems": [
+    {
+      "id": 1,
+      "name": "契約1",
+      "certNo": "3607496942",
+      "amount": 3281672,
+      "cost": 2206200
+    },
+    {
+      "id": 2,
+      "name": "契約2",
+      "certNo": "3826415397",
+      "amount": 1437044,
+      "cost": 1155932
+    }
+  ],
+  "mtTotal": 27554475,
+  "mfUnique": 4396031,
+  "idecoAdj": 3667
+}
