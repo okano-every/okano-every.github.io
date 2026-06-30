@@ -1,6 +1,6 @@
 {
-  "dataDate": "2026/06/30",
-  "generatedAt": "2026-06-30T20:14:48.566724",
+  "dataDate": "2026/07/01",
+  "generatedAt": "2026-07-01T01:11:36.691849",
   "rfItems": [
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
@@ -350,14 +350,39 @@
   ],
   "usdItems": [
     {
+      "name": "米ドル建債券（本人/特定）",
+      "usd": 14816.34,
+      "owner": "本人",
+      "lastUpdate": "2026/06/30",
+      "src": "MT"
+    },
+    {
+      "name": "米ドルMMF（本人/特定）",
+      "usd": 7007.25,
+      "owner": "本人",
+      "lastUpdate": "2026/06/30",
+      "src": "MT"
+    },
+    {
+      "name": "米ドル現金（本人）",
+      "usd": 7000.0,
+      "owner": "本人",
+      "lastUpdate": "2026/06/30",
+      "src": "MT"
+    },
+    {
       "name": "米ドルMMF（妻/特定）",
       "usd": 7007.25,
-      "owner": "妻"
+      "owner": "妻",
+      "lastUpdate": "2026/06/30",
+      "src": "MT"
     },
     {
       "name": "米ドル現金（妻）",
       "usd": 7000.0,
-      "owner": "妻"
+      "owner": "妻",
+      "lastUpdate": "2026/06/30",
+      "src": "MT"
     }
   ],
   "idecoItems": [
@@ -410,22 +435,7 @@
       "lastUpdate": "(06/30 15:42)"
     }
   ],
-  "sonyItems": [
-    {
-      "id": 1,
-      "name": "契約1",
-      "certNo": "3607496942",
-      "amount": 3314999,
-      "cost": 2206200
-    },
-    {
-      "id": 2,
-      "name": "契約2",
-      "certNo": "3826415397",
-      "amount": 1452306,
-      "cost": 1155932
-    }
-  ],
+  "sonyItems": [],
   "mtTotal": 27382409,
   "mfUnique": 4396145,
   "idecoAdj": 0,
