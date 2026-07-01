@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
+import { CHANGELOG_DATA } from "./Changelog";
+import { syncData, savePat, loadPat, saveGistId, loadGistId, touchLocalTs } from "../syncService";
 
 // ================================================================
 // テーマカラー動的定義 (Portalと完全に同期)
@@ -53,7 +55,9 @@ function calcJA(c, asOfDate) {
 // 【2026-06-30改修】以下、証券・銀行・外貨・iDeCo・ソニー生命の数値は
 // public/data/assets_latest.json から実行時に fetch して反映する（build_assets_json.py が自動生成）。
 let DATA_DATE = "読み込み中...";
-const DASHBOARD_VERSION = "v3.1";
+// バージョンはChangelog.jsxのCHANGELOG_DATAから動的取得（ハードコード廃止）
+const APP_VERSION = CHANGELOG_DATA[0]?.version || "v?.?";
+
 
 // ================================================================
 // 日付フォーマット：全ページ共通でyyyy/mm/dd表示に統一するヘルパー
@@ -390,6 +394,53 @@ function JaAddForm({ onAdd, onCancel }) {
 }
 
 // ================================================================
+// 積立設定管理（証券銘柄タブ内に統合 - v3.3）
+// ================================================================
+const SP_STORAGE_KEY = "okano-savings-plan-v1";
+const SP_PERSON_LIST  = ["本人", "妻", "長女", "次女", "長男"];
+const SP_ACCOUNT_LIST = ["SBI証券", "日興証券", "iDeCo"];
+const SP_PAYMENT_LIST = [
+  { value: "cash",   label: "現金" },
+  { value: "credit", label: "クレジットカード" },
+];
+const SP_CUSTODY_LIST = [
+  { value: "taxable",        label: "特定" },
+  { value: "nisa_tsumitate", label: "NISA（つみたて）" },
+  { value: "nisa_growth",    label: "NISA（成長）" },
+];
+const spPaymentLabel = (v) => SP_PAYMENT_LIST.find((p) => p.value === v)?.label || "ー";
+const spCustodyLabel = (v) => SP_CUSTODY_LIST.find((c) => c.value === v)?.label || "ー";
+const spFmt = (n) => "¥" + Math.round(Math.abs(n || 0)).toLocaleString("ja-JP");
+
+const SP_INIT_DATA = [
+  { id: "SP-001", person: "本人", account: "SBI証券", fundName: "eMAXIS Slim 全世界株式（オール・カントリー）", paymentMethod: "cash",   custodyType: "taxable",        monthlyAmount: 220000, archived: false, archivedDate: null, notes: "複数日(5日,15日)に分割発注" },
+  { id: "SP-002", person: "本人", account: "SBI証券", fundName: "eMAXIS Slim 全世界株式（オール・カントリー）", paymentMethod: "credit", custodyType: "nisa_tsumitate", monthlyAmount: 100000, archived: false, archivedDate: null, notes: "" },
+  { id: "SP-003", person: "本人", account: "SBI証券", fundName: "eMAXIS Slim 米国株式（S&P500）",               paymentMethod: "cash",   custodyType: "taxable",        monthlyAmount: 70000,  archived: false, archivedDate: null, notes: "複数日(5日,15日)に分割発注" },
+  { id: "SP-004", person: "本人", account: "SBI証券", fundName: "ニッセイNASDAQ100インデックスファンド",        paymentMethod: "cash",   custodyType: "taxable",        monthlyAmount: 10000,  archived: false, archivedDate: null, notes: "" },
+  { id: "SP-005", person: "本人", account: "iDeCo",   fundName: "eMAXIS Slim 国内株式（TOPIX）",               paymentMethod: null,     custodyType: null,             monthlyAmount: 1000,   archived: false, archivedDate: null, notes: "配分割合20%" },
+  { id: "SP-006", person: "本人", account: "iDeCo",   fundName: "eMAXIS Slim 全世界株式（除く日本）",          paymentMethod: null,     custodyType: null,             monthlyAmount: 4000,   archived: false, archivedDate: null, notes: "配分割合80%" },
+  { id: "SP-007", person: "妻",   account: "SBI証券", fundName: "eMAXIS Slim 米国株式（S&P500）",               paymentMethod: "credit", custodyType: "nisa_growth",    monthlyAmount: 50000,  archived: false, archivedDate: null, notes: "" },
+  { id: "SP-008", person: "妻",   account: "SBI証券", fundName: "eMAXIS Slim 全世界株式（オール・カントリー）",paymentMethod: "credit", custodyType: "nisa_tsumitate", monthlyAmount: 50000,  archived: false, archivedDate: null, notes: "" },
+  { id: "SP-009", person: "妻",   account: "SBI証券", fundName: "ニッセイNASDAQ100インデックスファンド",        paymentMethod: "cash",   custodyType: "nisa_growth",    monthlyAmount: 50000,  archived: false, archivedDate: null, notes: "" },
+  { id: "SP-010", person: "長女", account: "日興証券", fundName: "日本株配当オープン",                          paymentMethod: "cash",   custodyType: "taxable",        monthlyAmount: 70000,  archived: false, archivedDate: null, notes: "" },
+  { id: "SP-011", person: "長男", account: "日興証券", fundName: "eMAXIS Slim 米国株式（S&P500）",               paymentMethod: "cash",   custodyType: "taxable",        monthlyAmount: 37000,  archived: false, archivedDate: null, notes: "" },
+  { id: "SP-012", person: "長男", account: "日興証券", fundName: "SBI・V・米国高配当株式インデックス",          paymentMethod: "cash",   custodyType: "taxable",        monthlyAmount: 37000,  archived: false, archivedDate: null, notes: "" },
+  { id: "SP-013", person: "次女", account: "日興証券", fundName: "eMAXIS Slim 米国株式（S&P500）",               paymentMethod: "cash",   custodyType: "taxable",        monthlyAmount: 70000,  archived: false, archivedDate: null, notes: "" },
+];
+function spLoadData() {
+  try {
+    const raw = localStorage.getItem(SP_STORAGE_KEY);
+    if (!raw) return SP_INIT_DATA;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : SP_INIT_DATA;
+  } catch { return SP_INIT_DATA; }
+}
+function spSaveData(list) {
+  try { localStorage.setItem(SP_STORAGE_KEY, JSON.stringify(list)); touchLocalTs(); }
+  catch (e) { console.error("積立データ保存失敗", e); }
+}
+
+// ================================================================
 // 各種定義
 // ================================================================
 const TABS   = ["summary","pnl","securities","banks","insurance","missing"];
@@ -398,7 +449,75 @@ const TAB_LB = {
   banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金", missing:"⚠️ 未連携",
 };
 
+
+
 let C = getColors(false); // 初期値: ライトモード（レンダー前のundefined回避）
+
+// ── 積立設定 インラインフォーム ──────────────────────────────────
+const SP_BLANK = { person: "本人", account: "SBI証券", fundName: "", paymentMethod: "cash", custodyType: "taxable", monthlyAmount: 0, notes: "" };
+
+function SpFormBody({ draft, onChange, SpField }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+      <SpField label="対象者" value={draft.person} onChange={v => onChange({ ...draft, person: v })} options={SP_PERSON_LIST} />
+      <SpField label="口座" value={draft.account} onChange={v => onChange({ ...draft, account: v })} options={SP_ACCOUNT_LIST} />
+      <SpField label="月次積立額（円）" value={draft.monthlyAmount} onChange={v => onChange({ ...draft, monthlyAmount: Number(v) })} type="number" />
+      <SpField label="決済方法" value={draft.account === "iDeCo" ? "" : draft.paymentMethod} onChange={v => onChange({ ...draft, paymentMethod: v })} options={draft.account === "iDeCo" ? [{ value: "", label: "ー" }] : SP_PAYMENT_LIST} />
+      <div style={{ gridColumn: "1/-1" }}>
+        <SpField label="ファンド名" value={draft.fundName} onChange={v => onChange({ ...draft, fundName: v })} />
+      </div>
+      <SpField label="預り区分" value={draft.account === "iDeCo" ? "" : draft.custodyType} onChange={v => onChange({ ...draft, custodyType: v })} options={draft.account === "iDeCo" ? [{ value: "", label: "ー" }] : SP_CUSTODY_LIST} />
+      <div style={{ gridColumn: "1/-1" }}>
+        <SpField label="備考" value={draft.notes} onChange={v => onChange({ ...draft, notes: v })} rows={2} />
+      </div>
+    </div>
+  );
+}
+
+function SpAddFormInline({ onSubmit, onCancel, isDark, SpField }) {
+  const [draft, setDraft] = useState({ ...SP_BLANK });
+  const cc = getColors(isDark);
+  return (
+    <div style={{ background: isDark ? "#0a1a2e" : "#f0f7ff", border: `1px solid ${cc.acc}33`, borderRadius: 12, padding: "14px 16px", marginBottom: 12 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: cc.acc, marginBottom: 10 }}>新規積立設定を追加</div>
+      <SpFormBody draft={draft} onChange={setDraft} SpField={SpField} />
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+        <button onClick={onCancel} style={{ background: "none", border: `1px solid ${cc.line}`, color: cc.muted, borderRadius: 8, padding: "6px 14px", fontSize: 12, cursor: "pointer" }}>キャンセル</button>
+        <button onClick={() => { if (draft.fundName) onSubmit(draft); }} style={{ background: cc.acc, border: "none", color: "#fff", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>追加</button>
+      </div>
+    </div>
+  );
+}
+
+function SpEditFormInline({ item, onSubmit, onCancel, isDark, SpField }) {
+  const [draft, setDraft] = useState({ ...item });
+  const cc = getColors(isDark);
+  return (
+    <div style={{ background: isDark ? "#0a1a2e" : "#f0f7ff", border: `1px solid ${cc.acc}33`, borderRadius: 12, padding: "14px 16px", marginBottom: 12 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: cc.acc, marginBottom: 10 }}>積立設定を編集</div>
+      <SpFormBody draft={draft} onChange={setDraft} SpField={SpField} />
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+        <button onClick={onCancel} style={{ background: "none", border: `1px solid ${cc.line}`, color: cc.muted, borderRadius: 8, padding: "6px 14px", fontSize: 12, cursor: "pointer" }}>キャンセル</button>
+        <button onClick={() => onSubmit(draft)} style={{ background: cc.acc, border: "none", color: "#fff", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>保存</button>
+      </div>
+    </div>
+  );
+}
+
+function SpArchiveModalContent({ onConfirm, onCancel, isDark }) {
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const cc = getColors(isDark);
+  return (
+    <>
+      <label style={{ fontSize: 11, color: cc.muted, fontWeight: 600 }}>積立終了日</label>
+      <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: "100%", background: isDark ? "#0a0f1a" : "#fff", border: `1px solid ${cc.line}`, color: cc.text, borderRadius: 8, padding: "7px 10px", fontSize: 13, marginTop: 4, marginBottom: 16, boxSizing: "border-box" }} />
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button onClick={onCancel} style={{ background: "none", border: `1px solid ${cc.line}`, color: cc.muted, borderRadius: 8, padding: "6px 14px", fontSize: 12, cursor: "pointer" }}>キャンセル</button>
+        <button onClick={() => onConfirm(date)} style={{ background: cc.amber, border: "none", color: "#fff", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>アーカイブ</button>
+      </div>
+    </>
+  );
+}
 
 export default function Dashboard() {
   const [tab,     setTab]     = useState("summary");
@@ -427,6 +546,28 @@ export default function Dashboard() {
   const [manualCash, setManualCash] = useState([]);
   const [manualFormOpen, setManualFormOpen] = useState(null); // 'JPY' | 'USD' | 'THB' | null
   const [sortState, setSortState] = useState({}); // { tableId: { key, dir } }
+
+  // ── 積立設定管理（証券銘柄タブ内） ──
+  const [spList, setSpList] = useState(() => spLoadData());
+  const [spOpen, setSpOpen] = useState(false); // 折りたたみ状態（デフォルト閉じ）
+  const [spAddMode, setSpAddMode] = useState(false);
+  const [spEditId, setSpEditId] = useState(null);
+  const [spArchiveTarget, setSpArchiveTarget] = useState(null);
+  const [spShowArchived, setSpShowArchived] = useState(false);
+  const [spSortKey, setSpSortKey] = useState(null);
+  const [spSortDir, setSpSortDir] = useState("asc");
+
+  // ── アーカイブ表示/非表示（銀行タブ） ──
+  const [showArchivedJpy, setShowArchivedJpy] = useState(false);
+  const [showArchivedUsd, setShowArchivedUsd] = useState(false);
+  const [showArchivedThb, setShowArchivedThb] = useState(false);
+
+  // ── 同期UIステート ──
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [syncPat, setSyncPat] = useState(() => loadPat());
+  const [syncGistId, setSyncGistId] = useState(() => loadGistId());
+  const [syncStatus, setSyncStatus] = useState(null); // { status, message, direction }
+  const [syncLoading, setSyncLoading] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("okano-app-theme") || "light";
@@ -505,11 +646,15 @@ export default function Dashboard() {
     const next = manualCash.filter((e) => e.id !== id);
     setManualCash(next);
     saveManualCash(next);
+    touchLocalTs();
   };
+
+
   const deleteManualCashByName = (name, currency) => {
     const next = manualCash.filter((e) => !(e.name === name && e.currency === currency));
     setManualCash(next);
     saveManualCash(next);
+    touchLocalTs();
   };
 
   // 資産データ（証券・銀行・外貨・iDeCo・ソニー生命）を実行時に取得
@@ -533,6 +678,37 @@ export default function Dashboard() {
       .then(rows => setDetailHistoryRows(Array.isArray(rows) ? rows : []))
       .catch(() => setDetailHistoryError(true));
   }, []);
+
+  // ── 積立設定管理 ハンドラー ──
+  const spPersist = (next) => { setSpList(next); spSaveData(next); };
+  const spHandleAdd = (f) => { spPersist([...spList, { ...f, id: `SP-${Date.now()}`, archived: false, archivedDate: null }]); setSpAddMode(false); };
+  const spHandleEdit = (f) => { spPersist(spList.map((i) => (i.id === f.id ? f : i))); setSpEditId(null); };
+  const spHandleArchiveConfirm = (date) => {
+    spPersist(spList.map((i) => (i.id === spArchiveTarget?.id ? { ...i, archived: true, archivedDate: date } : i)));
+    setSpArchiveTarget(null);
+  };
+  const spHandleRestore = (id) => { spPersist(spList.map((i) => (i.id === id ? { ...i, archived: false, archivedDate: null } : i))); };
+  const spHandleSort = (key) => {
+    if (spSortKey === key) { setSpSortDir(d => d === "asc" ? "desc" : "asc"); }
+    else { setSpSortKey(key); setSpSortDir("asc"); }
+  };
+
+  // ── 同期ハンドラー ──
+  const handleSync = async () => {
+    setSyncLoading(true); setSyncStatus(null);
+    savePat(syncPat); saveGistId(syncGistId);
+    const result = await syncData();
+    // ダウンロード後はlocalStorageが更新されているのでステートを再読込
+    if (result.direction === "download") {
+      setManualCash(loadManualCash());
+      setBankExclusions(JSON.parse(localStorage.getItem("okano-bank-exclusions-v1") || "{}"));
+      setInsExclusions(JSON.parse(localStorage.getItem("okano-ins-exclusions-v1") || "{}"));
+      setSpList(spLoadData());
+    }
+    setSyncStatus(result); setSyncLoading(false);
+    // 新しいGist IDがあれば更新
+    setSyncGistId(loadGistId());
+  };
 
   const jaCalc       = jaList.map(c => ({ ...c, ...calcJA(c) }));
   const jaActiveCalc = jaCalc.filter(c => !c.archived);
@@ -1058,15 +1234,165 @@ export default function Dashboard() {
       {/* ══════════════════════════════════ */}
       {tab === "securities" && (
         <div>
-          <div style={{ fontSize: 12, color: C.muted, marginBottom: 16, background: C.card, padding: "16px 20px", borderRadius: 12, border: `1px solid ${C.line}`, fontWeight: 500, display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 24, fontWeight: 800, color: C.text, fontFamily: "monospace" }}>{fmt(RF_TOTAL)}</div>
-            <div style={{ fontSize: 13, color: C.muted }}>
-              含み損益: <span style={{ color: pnlClr(RF_PNL), fontWeight: 700 }}>{sgn(RF_PNL)}{fmt(Math.abs(RF_PNL))}</span>
-            </div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
-              抽出先：Robofolio
-            </div>
-          </div>
+          {/* ── 積立設定管理（折りたたみパネル） ── */}
+          {(() => {
+            const spActive   = spList.filter(i => !i.archived);
+            const spArchived = spList.filter(i => i.archived);
+            const spView     = spShowArchived ? spArchived : spActive;
+            const spSorted   = [...spView].sort((a, b) => {
+              if (!spSortKey) return 0;
+              const av = a[spSortKey], bv = b[spSortKey];
+              let cmp = spSortKey === "monthlyAmount"
+                ? Number(av || 0) - Number(bv || 0)
+                : String(av ?? "").localeCompare(String(bv ?? ""), "ja");
+              return spSortDir === "asc" ? cmp : -cmp;
+            });
+            const spTotal   = spActive.reduce((s, i) => s + Number(i.monthlyAmount || 0), 0);
+            const spIdeco   = spActive.filter(i => i.account === "iDeCo").reduce((s, i) => s + Number(i.monthlyAmount || 0), 0);
+            const spByPay   = SP_PAYMENT_LIST.map(p => ({ label: p.label, monthly: spActive.filter(i => i.account !== "iDeCo" && i.paymentMethod === p.value).reduce((s, i) => s + Number(i.monthlyAmount || 0), 0) }));
+            const spByPerson= SP_PERSON_LIST.map(p => ({ label: p, monthly: spActive.filter(i => i.person === p).reduce((s, i) => s + Number(i.monthlyAmount || 0), 0) })).filter(p => p.monthly > 0);
+            const spEditingItem = spEditId ? spList.find(i => i.id === spEditId) : null;
+
+            // フォームコンポーネント（インライン）
+            const SpField = ({ label, value, onChange, type = "text", options, rows }) => {
+              const base = { width: "100%", background: isDark ? "#0a0f1a" : "#ffffff", border: `1px solid ${C.line}`, color: C.text, borderRadius: 8, padding: "7px 10px", fontSize: 12, boxSizing: "border-box", marginTop: 3 };
+              return (
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: 10, color: C.muted, fontWeight: 600, display: "block" }}>{label}</label>
+                  {options ? (
+                    <select value={value} onChange={e => onChange(e.target.value)} style={base}>
+                      {options.map(o => <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>)}
+                    </select>
+                  ) : rows ? (
+                    <textarea rows={rows} value={value} onChange={e => onChange(e.target.value)} style={{ ...base, resize: "vertical" }} />
+                  ) : (
+                    <input type={type} value={value} onChange={e => onChange(type === "number" ? Number(e.target.value) : e.target.value)} style={base} />
+                  )}
+                </div>
+              );
+            };
+
+            return (
+              <div style={{ background: C.card, border: `1px solid ${C.acc}22`, borderRadius: 16, marginBottom: 16, overflow: "hidden", boxShadow: "0 2px 4px rgba(0,82,204,0.06)" }}>
+                {/* ── ヘッダー（常時表示・クリックで展開） ── */}
+                <div
+                  onClick={() => setSpOpen(o => !o)}
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", cursor: "pointer", borderBottom: spOpen ? `1px solid ${C.line}` : "none", background: spOpen ? (isDark ? "#0d1a30" : "#f0f7ff") : "transparent" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: C.acc }}>📋 積立設定管理</span>
+                    <span style={{ fontSize: 11, color: C.muted }}>運用中 {spActive.length}件</span>
+                  </div>
+                  {/* サマリー（閉じた状態でも表示） */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: C.acc, fontFamily: "monospace" }}>{spFmt(spTotal)}</div>
+                      <div style={{ fontSize: 10, color: C.muted }}>/月　{spFmt(spTotal * 12)}/年</div>
+                    </div>
+                    <div style={{ fontSize: 16, color: C.muted, transition: "transform 0.2s", transform: spOpen ? "rotate(180deg)" : "none" }}>▼</div>
+                  </div>
+                </div>
+
+                {/* ── サマリー詳細（常時表示） ── */}
+                <div style={{ padding: "10px 18px", display: "flex", flexWrap: "wrap", gap: "6px 20px", fontSize: 11, background: isDark ? "#0a1520" : "#f8f9fb", borderBottom: spOpen ? `1px solid ${C.line}` : "none" }}>
+                  <span style={{ color: C.muted }}>iDeCo: <strong style={{ color: C.purple, fontFamily: "monospace" }}>{spFmt(spIdeco)}</strong></span>
+                  {spByPay.map(b => <span key={b.label} style={{ color: C.muted }}>{b.label}: <strong style={{ color: C.text, fontFamily: "monospace" }}>{spFmt(b.monthly)}</strong></span>)}
+                  <span style={{ color: C.line }}>│</span>
+                  {spByPerson.map(b => <span key={b.label} style={{ color: C.muted }}>{b.label}: <strong style={{ color: C.text, fontFamily: "monospace" }}>{spFmt(b.monthly)}</strong></span>)}
+                </div>
+
+                {/* ── 展開コンテンツ ── */}
+                {spOpen && (
+                  <div style={{ padding: "16px 18px" }}>
+                    {/* タブ切り替えと追加ボタン */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button onClick={() => setSpShowArchived(false)} style={{ background: !spShowArchived ? C.acc : "transparent", color: !spShowArchived ? "#fff" : C.muted, border: `1px solid ${!spShowArchived ? C.acc : C.line}`, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          運用中（{spActive.length}）
+                        </button>
+                        <button onClick={() => setSpShowArchived(true)} style={{ background: spShowArchived ? C.acc : "transparent", color: spShowArchived ? "#fff" : C.muted, border: `1px solid ${spShowArchived ? C.acc : C.line}`, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          アーカイブ済み（{spArchived.length}）
+                        </button>
+                      </div>
+                      {!spShowArchived && (
+                        <button onClick={() => setSpAddMode(true)} style={{ background: C.green, border: "none", color: "#fff", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>＋ 追加</button>
+                      )}
+                    </div>
+
+                    {/* 追加フォーム */}
+                    {spAddMode && (() => {
+                      const [draft, setDraft] = [
+                        { person: "本人", account: "SBI証券", fundName: "", paymentMethod: "cash", custodyType: "taxable", monthlyAmount: 0, notes: "" },
+                        () => {}
+                      ];
+                      // ステートレスフォーム回避のため、spAddModeフォームを別コンポーネント化
+                      return null; // SpAddFormで代替
+                    })()}
+                    {spAddMode && <SpAddFormInline onSubmit={spHandleAdd} onCancel={() => setSpAddMode(false)} isDark={isDark} SpField={SpField} />}
+                    {spEditingItem && <SpEditFormInline item={spEditingItem} onSubmit={spHandleEdit} onCancel={() => setSpEditId(null)} isDark={isDark} SpField={SpField} />}
+
+                    {/* テーブル */}
+                    <div style={{ overflowX: "auto", marginTop: 8 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ borderBottom: `2px solid ${C.line}`, color: C.muted }}>
+                            {[["person","対象者"],["account","口座"],["fundName","ファンド名"],["paymentMethod","決済方法"],["custodyType","預り区分"],["monthlyAmount","月額",true]].map(([k,l,r]) => (
+                              <th key={k} onClick={() => spHandleSort(k)} style={{ padding: "8px 6px", textAlign: r ? "right" : "left", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap", color: C.muted, fontWeight: 600, fontSize: 11 }}>
+                                {l}<span style={{ marginLeft: 3, fontSize: 9, color: spSortKey === k ? C.acc : C.line }}>{spSortKey === k ? (spSortDir === "asc" ? "▲" : "▼") : "▲▼"}</span>
+                              </th>
+                            ))}
+                            {spShowArchived && <th style={{ padding: "8px 6px", fontSize: 11, color: C.muted, fontWeight: 600 }}>解除日</th>}
+                            <th style={{ padding: "8px 6px" }}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {spSorted.map(i => (
+                            <tr key={i.id} style={{ borderBottom: `1px solid ${C.line}` }}>
+                              <td style={{ padding: "7px 6px", fontWeight: 600, fontSize: 12 }}>{i.person}</td>
+                              <td style={{ padding: "7px 6px", color: C.muted, fontSize: 11 }}>{i.account}</td>
+                              <td style={{ padding: "7px 6px", fontSize: 12 }}>{i.fundName}</td>
+                              <td style={{ padding: "7px 6px", color: C.muted, fontSize: 11 }}>{i.account === "iDeCo" ? "ー" : spPaymentLabel(i.paymentMethod)}</td>
+                              <td style={{ padding: "7px 6px", color: C.muted, fontSize: 11 }}>{i.account === "iDeCo" ? "ー" : spCustodyLabel(i.custodyType)}</td>
+                              <td style={{ padding: "7px 6px", textAlign: "right", fontWeight: 700, fontFamily: "monospace" }}>{spFmt(i.monthlyAmount)}</td>
+                              {spShowArchived && <td style={{ padding: "7px 6px", color: C.amber, fontSize: 11 }}>{i.archivedDate || "ー"}</td>}
+                              <td style={{ padding: "7px 6px", textAlign: "right", whiteSpace: "nowrap" }}>
+                                {!spShowArchived ? (
+                                  <>
+                                    <button onClick={() => setSpEditId(i.id)} style={{ background: "none", border: "none", color: C.acc, fontSize: 11, cursor: "pointer", marginRight: 6 }}>編集</button>
+                                    <button onClick={() => setSpArchiveTarget(i)} style={{ background: "none", border: "none", color: C.muted, fontSize: 11, cursor: "pointer" }}>除外</button>
+                                  </>
+                                ) : (
+                                  <button onClick={() => spHandleRestore(i.id)} style={{ background: "none", border: "none", color: C.green, fontSize: 11, cursor: "pointer" }}>復元</button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {spSorted.length === 0 && (
+                        <div style={{ textAlign: "center", color: C.muted, padding: "24px 0", fontSize: 12 }}>
+                          {spShowArchived ? "アーカイブ済みの積立設定はありません" : "積立設定がありません"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* アーカイブ確認モーダル */}
+                {spArchiveTarget && (
+                  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+                    <div style={{ background: C.card, borderRadius: 16, padding: 24, width: 320, boxShadow: "0 10px 25px rgba(0,0,0,0.3)" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 4 }}>積立設定をアーカイブ</div>
+                      <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>{spArchiveTarget.person} / {spArchiveTarget.fundName}</div>
+                      <SpArchiveModalContent onConfirm={spHandleArchiveConfirm} onCancel={() => setSpArchiveTarget(null)} isDark={isDark} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── 証券銘柄テーブル（名義別） ── */}
           {["本人","妻","長女","次女","長男"].map(owner => {
             const rawItems = RF_ITEMS.filter(i => i.owner === owner);
             if (!rawItems.length) return null;
@@ -1126,6 +1452,7 @@ export default function Dashboard() {
         </div>
       )}
 
+
       {/* ── TAB: 銀行/外貨 ── */}
       {tab === "banks" && (() => {
         const manualJpy = latestManualByName(manualCash, "JPY");
@@ -1147,6 +1474,7 @@ export default function Dashboard() {
           setBankExclusions(prev => {
             const next = { ...prev, [name]: !prev[name] };
             localStorage.setItem("okano-bank-exclusions-v1", JSON.stringify(next));
+            touchLocalTs();
             return next;
           });
         };
@@ -1155,11 +1483,16 @@ export default function Dashboard() {
         <div>
           {/* ── 銀行・現金資産（円） ── */}
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>銀行・現金資産</div>
-              <button onClick={() => setManualFormOpen(manualFormOpen === "JPY" ? null : "JPY")} style={{ background: "none", border: `1px solid ${C.acc}`, color: C.acc, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                + 現金手入力
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setShowArchivedJpy(v => !v)} style={{ background: showArchivedJpy ? C.amber + "22" : "transparent", border: `1px solid ${C.amber}`, color: C.amber, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  {showArchivedJpy ? "非表示を隠す" : "除外を表示"}
+                </button>
+                <button onClick={() => setManualFormOpen(manualFormOpen === "JPY" ? null : "JPY")} style={{ background: "none", border: `1px solid ${C.acc}`, color: C.acc, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  + 現金手入力
+                </button>
+              </div>
             </div>
             {manualFormOpen === "JPY" && (
               <ManualCashForm currency="JPY" unitLabel="残高（円）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
@@ -1172,12 +1505,13 @@ export default function Dashboard() {
                     <SortTh label="JPY残高" sortKey="amount" tableId="bank_jpy" getSort={getSort} onSort={onSort} right />
                     <SortTh label="最終更新日" sortKey="lastUpdate" tableId="bank_jpy" getSort={getSort} onSort={onSort} isDate />
                     <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>取得元</th>
-                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "center" }}>除外</th>
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "center" }}>アーカイブ</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedJpyRows.map((it, i) => {
                     const isEx = (bankExclusions || {})[it.name];
+                    if (isEx && !showArchivedJpy) return null;
                     return (
                     <tr key={i} style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
                       <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
@@ -1188,7 +1522,7 @@ export default function Dashboard() {
                       <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
                       <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
                       <td style={{ padding: "8px", textAlign: "center" }}>
-                        <button onClick={() => toggleExclusion(it.name)} style={{ background: isEx ? C.acc : "transparent", border: `1px solid ${C.acc}`, color: isEx ? "#fff" : C.acc, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>
+                        <button onClick={() => toggleExclusion(it.name)} style={{ background: isEx ? C.amber : "transparent", border: `1px solid ${C.amber}`, color: isEx ? "#fff" : C.amber, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>
                           {isEx ? "除外中" : "除外"}
                         </button>
                       </td>
@@ -1209,7 +1543,7 @@ export default function Dashboard() {
           <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, borderBottom: `1px solid ${C.line}`, paddingBottom: 10, flexWrap: "wrap", gap: 8 }}>
               <div style={{ fontSize: 14, fontWeight: 700 }}>💵 米ドル資産</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ fontSize: 12 }}>
                   {usdLoad
                     ? <span style={{ color: C.muted }}>取得中…</span>
@@ -1217,6 +1551,9 @@ export default function Dashboard() {
                     ? <span style={{ color: C.green, fontWeight: 700 }}>1 USD = ¥{usdJpy.toFixed(2)}</span>
                     : <span style={{ color: C.amber }}>レート取得失敗</span>}
                 </div>
+                <button onClick={() => setShowArchivedUsd(v => !v)} style={{ background: showArchivedUsd ? C.amber + "22" : "transparent", border: `1px solid ${C.amber}`, color: C.amber, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  {showArchivedUsd ? "非表示を隠す" : "除外を表示"}
+                </button>
                 <button onClick={() => setManualFormOpen(manualFormOpen === "USD" ? null : "USD")} style={{ background: "none", border: `1px solid ${C.acc}`, color: C.acc, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                   + 現金手入力
                 </button>
@@ -1226,7 +1563,7 @@ export default function Dashboard() {
               <ManualCashForm currency="USD" unitLabel="残高（USD）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
             )}
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8, minWidth: "500px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8, minWidth: "560px" }}>
               <thead>
                 <tr>
                   <SortTh label="名称・口座名" sortKey="name" tableId="bank_usd" getSort={getSort} onSort={onSort} />
@@ -1234,11 +1571,15 @@ export default function Dashboard() {
                   <th style={{ padding: "10px 8px", textAlign: "right", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>円換算</th>
                   <SortTh label="最終更新日" sortKey="lastUpdate" tableId="bank_usd" getSort={getSort} onSort={onSort} isDate />
                   <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>取得元</th>
+                  <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "center" }}>アーカイブ</th>
                 </tr>
               </thead>
               <tbody>
-                {sortedUsdRows.map((it, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
+                {sortedUsdRows.map((it, i) => {
+                  const isEx = (bankExclusions || {})[it.name];
+                  if (isEx && !showArchivedUsd) return null;
+                  return (
+                  <tr key={i} style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
                     <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
                       {it.name}
                       {it.src === "MANUAL" && <ManualHistoryRow name={it.name} currency="USD" entries={manualCash} unitFmt={(v) => "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: 2 })} onDelete={deleteManualCash} />}
@@ -1251,8 +1592,14 @@ export default function Dashboard() {
                     </td>
                     <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
                     <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
+                    <td style={{ padding: "8px", textAlign: "center" }}>
+                      <button onClick={() => toggleExclusion(it.name)} style={{ background: isEx ? C.amber : "transparent", border: `1px solid ${C.amber}`, color: isEx ? "#fff" : C.amber, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>
+                        {isEx ? "除外中" : "除外"}
+                      </button>
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
                 <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
                   <td style={{ padding: "10px 8px" }}>合計</td>
                   <td style={{ padding: "10px 8px", textAlign: "right", color: C.amber, fontFamily: "monospace" }}>
@@ -1261,7 +1608,7 @@ export default function Dashboard() {
                   <td style={{ padding: "10px 8px", textAlign: "right", color: C.text, fontFamily: "monospace" }}>
                     {usdJpy ? fmt(Math.round(usdRowsTotalLocal * usdJpy)) : "─"}
                   </td>
-                  <td colSpan={2}></td>
+                  <td colSpan={3}></td>
                 </tr>
               </tbody>
             </table>
@@ -1272,12 +1619,15 @@ export default function Dashboard() {
           <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginTop: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, borderBottom: `1px solid ${C.line}`, paddingBottom: 10, flexWrap: "wrap", gap: 8 }}>
               <div style={{ fontSize: 14, fontWeight: 700 }}>🇹🇭 タイバーツ資産</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ fontSize: 12 }}>
                   {thbJpy
                     ? <span style={{ color: thbIsFallback ? C.amber : C.green, fontWeight: 700 }}>1 THB = ¥{thbJpy.toFixed(3)}{thbIsFallback ? "（仮）" : ""}</span>
                     : <span style={{ color: C.muted }}>レート取得中…</span>}
                 </div>
+                <button onClick={() => setShowArchivedThb(v => !v)} style={{ background: showArchivedThb ? C.amber + "22" : "transparent", border: `1px solid ${C.amber}`, color: C.amber, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  {showArchivedThb ? "非表示を隠す" : "除外を表示"}
+                </button>
                 <button onClick={() => setManualFormOpen(manualFormOpen === "THB" ? null : "THB")} style={{ background: "none", border: `1px solid ${C.acc}`, color: C.acc, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                   + 現金手入力
                 </button>
@@ -1287,7 +1637,7 @@ export default function Dashboard() {
               <ManualCashForm currency="THB" unitLabel="残高（THB）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
             )}
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8, minWidth: "500px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8, minWidth: "560px" }}>
               <thead>
                 <tr>
                   <SortTh label="名称・口座名" sortKey="name" tableId="bank_thb" getSort={getSort} onSort={onSort} />
@@ -1295,11 +1645,15 @@ export default function Dashboard() {
                   <th style={{ padding: "10px 8px", textAlign: "right", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>円換算</th>
                   <SortTh label="最終更新日" sortKey="lastUpdate" tableId="bank_thb" getSort={getSort} onSort={onSort} isDate />
                   <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>取得元</th>
+                  <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "center" }}>アーカイブ</th>
                 </tr>
               </thead>
               <tbody>
-                {sortedThbRows.map((it, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
+                {sortedThbRows.map((it, i) => {
+                  const isEx = (bankExclusions || {})[it.name];
+                  if (isEx && !showArchivedThb) return null;
+                  return (
+                  <tr key={i} style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
                     <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
                       {it.name}
                       <ManualHistoryRow name={it.name} currency="THB" entries={manualCash} unitFmt={(v) => "฿" + Number(v).toLocaleString("en-US")} onDelete={deleteManualCash} />
@@ -1312,17 +1666,23 @@ export default function Dashboard() {
                     </td>
                     <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
                     <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
+                    <td style={{ padding: "8px", textAlign: "center" }}>
+                      <button onClick={() => toggleExclusion(it.name)} style={{ background: isEx ? C.amber : "transparent", border: `1px solid ${C.amber}`, color: isEx ? "#fff" : C.amber, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>
+                        {isEx ? "除外中" : "除外"}
+                      </button>
+                    </td>
                   </tr>
-                ))}
-                {sortedThbRows.length === 0 && (
-                  <tr><td colSpan={5} style={{ padding: "16px 8px", textAlign: "center", color: C.muted, fontSize: 12 }}>「+ 現金手入力」から登録してください</td></tr>
+                  );
+                })}
+                {sortedThbRows.filter(r => !(bankExclusions || {})[r.name] || showArchivedThb).length === 0 && (
+                  <tr><td colSpan={6} style={{ padding: "16px 8px", textAlign: "center", color: C.muted, fontSize: 12 }}>「+ 現金手入力」から登録してください</td></tr>
                 )}
-                {sortedThbRows.length > 0 && (
+                {sortedThbRows.some(r => !(bankExclusions || {})[r.name] || showArchivedThb) && (
                   <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
                     <td style={{ padding: "10px 8px" }}>合計</td>
                     <td style={{ padding: "10px 8px", textAlign: "right", color: C.amber, fontFamily: "monospace" }}>฿{thbRowsTotalLocal.toLocaleString("en-US")}</td>
                     <td style={{ padding: "10px 8px", textAlign: "right", color: C.text, fontFamily: "monospace" }}>{thbJpy ? fmt(Math.round(thbRowsTotalLocal * thbJpy)) : "─"}</td>
-                    <td colSpan={2}></td>
+                    <td colSpan={3}></td>
                   </tr>
                 )}
               </tbody>
@@ -1333,6 +1693,7 @@ export default function Dashboard() {
         </div>
         );
       })()}
+
 
       {/* ── TAB: 保険/年金 ── */}
       {tab === "insurance" && (
@@ -1587,9 +1948,72 @@ export default function Dashboard() {
 
 
       {/* ── フッター ── */}
-      <div style={{ marginTop: 24, fontSize: 11, color: C.muted, textAlign: "center", borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
-        岡野ファミリー 資産管理 {DASHBOARD_VERSION} ｜ {DATA_DATE}
+      <div style={{ marginTop: 24, fontSize: 11, color: C.muted, textAlign: "center", borderTop: `1px solid ${C.line}`, paddingTop: 16, display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
+        <div>資産管理App {APP_VERSION} ｜ {DATA_DATE}</div>
+        <button
+          onClick={() => setSyncOpen(v => !v)}
+          style={{ background: "none", border: `1px solid ${C.line}`, color: C.muted, borderRadius: 8, padding: "4px 12px", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+        >
+          🔄 デバイス間同期 (GitHub Gist)
+        </button>
       </div>
+
+      {/* ── 同期モーダル ── */}
+      {syncOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div style={{ background: C.card, borderRadius: 20, padding: "28px 32px", width: "min(420px, 92vw)", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: C.text, marginBottom: 4 }}>🔄 デバイス間同期</div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 20 }}>GitHub Gist を使ってデバイス間でデータを同期します</div>
+
+            <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: "block", marginBottom: 4 }}>GitHub Personal Access Token (PAT)</label>
+            <input
+              type="password"
+              value={syncPat}
+              onChange={e => setSyncPat(e.target.value)}
+              placeholder="ghp_xxxxxxxxxxxxxxxxxx"
+              style={{ width: "100%", background: isDark ? "#0a0f1a" : "#f8fafc", border: `1px solid ${C.line}`, color: C.text, borderRadius: 8, padding: "8px 12px", fontSize: 12, marginBottom: 12, boxSizing: "border-box" }}
+            />
+
+            <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: "block", marginBottom: 4 }}>Gist ID（初回は空欄のまま）</label>
+            <input
+              type="text"
+              value={syncGistId}
+              onChange={e => setSyncGistId(e.target.value)}
+              placeholder="初回は自動作成されます"
+              style={{ width: "100%", background: isDark ? "#0a0f1a" : "#f8fafc", border: `1px solid ${C.line}`, color: C.text, borderRadius: 8, padding: "8px 12px", fontSize: 12, marginBottom: 16, boxSizing: "border-box" }}
+            />
+
+            {syncStatus && (
+              <div style={{
+                padding: "10px 14px", borderRadius: 10, marginBottom: 16, fontSize: 12, fontWeight: 500,
+                background: syncStatus.status === "ok" ? (isDark ? "#0d2a1a" : "#d1fae5") : syncStatus.status === "no_pat" ? (isDark ? "#2a1a0d" : "#fef3c7") : (isDark ? "#2a0d0d" : "#fee2e2"),
+                color: syncStatus.status === "ok" ? "#059669" : syncStatus.status === "no_pat" ? "#d97706" : "#dc2626",
+                border: `1px solid ${syncStatus.status === "ok" ? "#a7f3d0" : syncStatus.status === "no_pat" ? "#fde68a" : "#fecaca"}`
+              }}>
+                {syncStatus.status === "ok" ? "✓ " : "✗ "}{syncStatus.message}
+                {syncStatus.direction === "download" && " — ページをリロードすると最新データが表示されます"}
+              </div>
+            )}
+
+            <div style={{ fontSize: 10, color: C.muted, marginBottom: 16, lineHeight: 1.6 }}>
+              ※ PATはセッション中のみメモリに保持（Gist ID はlocalStorageに保存）。<br/>
+              ※ 「gist」スコープのみ付与されたPATを使用してください。<br/>
+              ※ 同期対象：手入力現金・除外設定・積立設定データ
+            </div>
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => { setSyncOpen(false); setSyncStatus(null); }} style={{ background: "none", border: `1px solid ${C.line}`, color: C.muted, borderRadius: 10, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>閉じる</button>
+              <button
+                onClick={handleSync}
+                disabled={syncLoading}
+                style={{ background: syncLoading ? C.muted : C.acc, border: "none", color: "#fff", borderRadius: 10, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: syncLoading ? "not-allowed" : "pointer" }}
+              >
+                {syncLoading ? "同期中…" : "同期実行"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

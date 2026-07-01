@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Portal         from "./pages/Portal";
 import Dashboard      from "./pages/Dashboard";
 import FXDashboard    from "./pages/FXDashboard";
-import SavingsPlan    from "./pages/SavingsPlan";
 import Login          from "./pages/Login";
 import ChangePassword from "./pages/ChangePassword";
 import Changelog      from "./pages/Changelog";
@@ -26,7 +25,6 @@ export default function App() {
         <Route path="/"            element={<RequireAuth><Portal /></RequireAuth>} />
         <Route path="/dashboard"   element={<RequireAuth><Dashboard /></RequireAuth>} />
         <Route path="/fx"          element={<RequireAuth><FXDashboard /></RequireAuth>} />
-        <Route path="/savings"     element={<RequireAuth><SavingsPlan /></RequireAuth>} />
         <Route path="/changelog"   element={<RequireAuth><Changelog /></RequireAuth>} />
         {/* 今後のアプリ */}
         {/* <Route path="/education" element={<RequireAuth><Education /></RequireAuth>} /> */}

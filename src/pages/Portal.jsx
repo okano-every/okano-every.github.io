@@ -78,7 +78,7 @@ const Icons = {
 const APPS = [
   { id: "dashboard", icon: "dashboard", name: "資産ダッシュボード", desc: "家族全員の資産を一元管理。推移グラフ・目標進捗", path: "/dashboard", colorKey: "acc", ready: true },
   { id: "fx", icon: "fx", name: "FXトラッカー", desc: "HFM / Exness / XM 取引履歴・損益・残高推移（2023-06〜）", path: "/fx", colorKey: "green", ready: true },
-  { id: "savings", icon: "savings", name: "積立設定管理", desc: "SBI・日興・iDeCoの月次積立を一元管理。決済方法/預り区分別の集計", path: "/savings", colorKey: "teal", ready: true },
+  { id: "savings", icon: "savings", name: "積立設定管理", desc: "資産ダッシュボード ▶ 証券銘柄タブ内に統合済み（v3.3〜）", path: "/dashboard", colorKey: "teal", ready: true },
   { id: "changelog", icon: "report", name: "更新履歴", desc: "アプリのバージョン履歴と変更点を確認", path: "/changelog", colorKey: "pink", ready: true },
   { id: "crypto", icon: "crypto", name: "暗号資産", desc: "保有コイン・評価額の管理", path: "/crypto", colorKey: "amber", ready: false },
   { id: "education", icon: "education", name: "教育費カレンダー", desc: "子供3人の進学タイムライン・費用計画", path: "/education", colorKey: "purple", ready: false },
@@ -281,7 +281,7 @@ export default function Portal() {
         padding: "24px 20px", textAlign: "center",
         fontSize: 11, color: C.muted, borderTop: `1px solid ${C.line}`, marginTop: 16,
       }}>
-        岡野ファミリー Apps | データは端末内に保存 | 平日 UTC 01:00 自動更新
+        資産管理App | データは端末内に保存 | 平日 UTC 01:00 自動更新
       </div>
     </div>
   );
