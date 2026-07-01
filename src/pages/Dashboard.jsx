@@ -420,6 +420,10 @@ export default function Dashboard() {
   const [bankExclusions, setBankExclusions] = useState(() => {
     try { return JSON.parse(localStorage.getItem("okano-bank-exclusions-v1")) || {}; } catch { return {}; }
   });
+  const [insExclusions, setInsExclusions] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("okano-ins-exclusions-v1")) || {}; } catch { return {}; }
+  });
+  const [showArchivedIns, setShowArchivedIns] = useState(false);
   const [manualCash, setManualCash] = useState([]);
   const [manualFormOpen, setManualFormOpen] = useState(null); // 'JPY' | 'USD' | 'THB' | null
   const [sortState, setSortState] = useState({}); // { tableId: { key, dir } }
@@ -502,6 +506,11 @@ export default function Dashboard() {
     setManualCash(next);
     saveManualCash(next);
   };
+  const deleteManualCashByName = (name, currency) => {
+    const next = manualCash.filter((e) => !(e.name === name && e.currency === currency));
+    setManualCash(next);
+    saveManualCash(next);
+  };
 
   // 資産データ（証券・銀行・外貨・iDeCo・ソニー生命）を実行時に取得
   // build_assets_json.py が毎営業日 public/data/assets_latest.json を自動更新する
@@ -525,24 +534,45 @@ export default function Dashboard() {
       .catch(() => setDetailHistoryError(true));
   }, []);
 
-  const jaActive = jaList.filter(c => !c.archived);
-  const jaCalc   = jaActive.map(c => ({ ...c, ...calcJA(c) }));
-  const jaTotal  = jaCalc.reduce((s, c) => s + c.value, 0);
-  const jaCost   = jaCalc.reduce((s, c) => s + c.cost,  0);
-  const jaPnl    = jaCalc.reduce((s, c) => s + c.pnl,   0);
+  const jaCalc       = jaList.map(c => ({ ...c, ...calcJA(c) }));
+  const jaActiveCalc = jaCalc.filter(c => !c.archived);
+  const jaTotal      = jaActiveCalc.reduce((s, c) => s + c.value, 0);
+  const jaCost       = jaActiveCalc.reduce((s, c) => s + c.cost,  0);
+  const jaPnl        = jaActiveCalc.reduce((s, c) => s + c.pnl,   0);
 
-  const excludedJpySum = BANK_ITEMS.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + i.amount, 0);
-  const excludedUsdJpySum = USD_ITEMS.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + Math.round(i.usd * (usdJpy || 0)), 0);
-  const GRAND_TOTAL = MT_TOTAL + MF_UNIQUE + SONY_TOTAL + IDECO_ADJ + jaTotal - excludedJpySum - excludedUsdJpySum;
-  const EFFECTIVE_BANK_TOTAL = BANK_TOTAL - excludedJpySum;
-  const EFFECTIVE_USD_SUM = USD_SUM - USD_ITEMS.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + i.usd, 0);
+  const manualJpy = latestManualByName(manualCash, "JPY");
+  const manualUsd = latestManualByName(manualCash, "USD");
+  const manualThb = latestManualByName(manualCash, "THB");
+
+  const jpyRows = [...BANK_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualJpy.map(e => ({ name: e.name, amount: e.amount, lastUpdate: e.date, src: "MANUAL" }))];
+  const usdRows = [...USD_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualUsd.map(e => ({ name: e.name, usd: e.amount, lastUpdate: e.date, src: "MANUAL" }))];
+  
+  const excludedJpySum = jpyRows.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + (i.amount || 0), 0);
+  const excludedUsdSum = usdRows.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + (i.usd || 0), 0);
+  const excludedUsdJpySum = usdJpy ? Math.round(excludedUsdSum * usdJpy) : 0;
+
+  const manualJpySum = manualJpy.reduce((s, e) => s + e.amount, 0);
+  const manualUsdSum = manualUsd.reduce((s, e) => s + e.amount, 0);
+  const manualUsdJpySum = usdJpy ? Math.round(manualUsdSum * usdJpy) : 0;
+
+  const excludedSonySum = SONY_ITEMS.filter(it => (insExclusions || {})[it.name]).reduce((s, i) => s + (i.amount || 0), 0);
+  const EFFECTIVE_SONY_TOTAL = SONY_TOTAL - excludedSonySum;
+
+  const EFFECTIVE_JA_TOTAL = jaTotal; // JA is handled via `archived` property directly
+
+  const GRAND_TOTAL = MT_TOTAL + MF_UNIQUE + EFFECTIVE_SONY_TOTAL + IDECO_ADJ + EFFECTIVE_JA_TOTAL 
+                      - excludedJpySum - excludedUsdJpySum 
+                      + manualJpySum + manualUsdJpySum;
+                      
+  const EFFECTIVE_BANK_TOTAL = BANK_TOTAL + manualJpySum - excludedJpySum;
+  const EFFECTIVE_USD_SUM = USD_SUM + manualUsdSum - excludedUsdSum;
   const EFFECTIVE_USD_JPY_SUM = usdJpy ? Math.round(EFFECTIVE_USD_SUM * usdJpy) : 0;
 
   const pnlRows = [
     { label:"証券（SBI/日興）", cost:RF_COST,   value:RF_TOTAL,   color:C.acc },
     { label:"iDeCo",            cost:IDECO_COST, value:IDECO_TOTAL, color:C.purple, note:"MF取得価額使用" },
-    { label:"ソニー生命",        cost:SONY_COST,  value:SONY_TOTAL,  color:"#f97316" },
-    { label:"JA共済（計算値）",  cost:jaCost,     value:jaTotal,    color:"#10b981", note:"複利計算（0.9%→0.75%）" },
+    { label:"ソニー生命",        cost:SONY_COST - SONY_ITEMS.filter(it => (insExclusions || {})[it.name]).reduce((s, i) => s + (i.cost || 0), 0),  value:EFFECTIVE_SONY_TOTAL,  color:"#f97316" },
+    { label:"JA共済（計算値）",  cost:jaCost - jaCalc.filter(c => (insExclusions || {})[c.name]).reduce((s, c) => s + c.cost, 0),     value:EFFECTIVE_JA_TOTAL,    color:"#10b981", note:"複利計算（0.9%→0.75%）" },
   ];
   const invCost  = pnlRows.reduce((s, r) => s + r.cost,  0);
   const invValue = pnlRows.reduce((s, r) => s + r.value, 0);
@@ -556,8 +586,8 @@ export default function Dashboard() {
     { name:"債券",                value:pieBonds,    color:"#6366f1" },
     { name:"外貨",                value:EFFECTIVE_USD_JPY_SUM,   color:"#f59e0b" },
     { name:"iDeCo",           value:IDECO_TOTAL, color:C.purple },
-    { name:"ソニー生命",       value:SONY_TOTAL,  color:"#f97316" },
-    { name:"JA共済",           value:jaTotal,     color:"#10b981" },
+    { name:"ソニー生命",       value:EFFECTIVE_SONY_TOTAL,  color:"#f97316" },
+    { name:"JA共済",           value:EFFECTIVE_JA_TOTAL,     color:"#10b981" },
   ];
 
   // 資産推移データ加工：同一日付は最新行を採用して重複を集約し、日付昇順に並べ替え
@@ -566,7 +596,7 @@ export default function Dashboard() {
   const historyByDate = new Map();
   historyRows.forEach(r => {
     const asOf = new Date(r.date);
-    const jaAtDate = jaActive.reduce((s, c) => s + calcJA(c, asOf).value, 0);
+    const jaAtDate = jaList.filter(c => !c.archived).reduce((s, c) => s + calcJA(c, asOf).value, 0);
     const mt = Number(r.mt_total) || 0;
     const mf = Number(r.mf_unique) || 0;
     const sony = Number(r.sony_total) || 0;
@@ -589,8 +619,17 @@ export default function Dashboard() {
   const saveJa    = (updated) => { setJaList(l => l.map(c => c.id===updated.id ? updated : c)); setEditJa(null); };
   const archiveJa = (id)      => setJaList(l => l.map(c => c.id===id ? { ...c, archived:!c.archived } : c));
   const addJa     = (c)       => { setJaList(l => [...l, c]); setAddMode(false); };
-  const [secViewMode, setSecViewMode] = useState("trend"); // 有価資産セクション："trend"(推移) / "breakdown"(現在の銘柄別内訳)
-
+  const [secTrendMode, setSecTrendMode] = useState("total");
+  const [secTrendRange, setSecTrendRange] = useState("month");
+  
+  const [idecoTrendMode, setIdecoTrendMode] = useState("total");
+  const [idecoTrendRange, setIdecoTrendRange] = useState("month");
+  
+  const [cashTrendMode, setCashTrendMode] = useState("total");
+  const [cashTrendRange, setCashTrendRange] = useState("month");
+  
+  const [insTrendMode, setInsTrendMode] = useState("total");
+  const [insTrendRange, setInsTrendRange] = useState("month");
   const Th = ({ children, right }) => (
     <th style={{ textAlign: right ? "right" : "left", padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, whiteSpace: "nowrap" }}>
       {children}
@@ -621,28 +660,67 @@ export default function Dashboard() {
   };
 
   const filteredTrendData = getFilteredTrend(trendData, trendRange);
-  const filteredDetailData = getFilteredTrend(detailHistoryRows, trendRange);
+
+  const renderTrendSection = (title, mode, setMode, range, setRange, mainKey, detailPrefix, totalColor) => {
+    const totalData = getFilteredTrend(trendData, range);
+    const itemData  = getFilteredTrend(detailHistoryRows, range).map(d => {
+      const row = { date: d.date };
+      if (d.securities) d.securities.forEach(s => row[`[証券] ${s.name} (${s.owner})`] = s.amount);
+      if (d.ideco)      d.ideco.forEach(s => row[`[iDeCo] ${s.name}`] = s.amount);
+      if (d.bank)       d.bank.forEach(s => row[`[銀行] ${s.name} (${s.owner||'無'})`] = s.amount);
+      if (d.usd)        d.usd.forEach(s => row[`[外貨] ${s.name} (${s.owner||'無'})`] = s.usd);
+      if (d.sony)       d.sony.forEach(s => row[`[保険] ${s.name}`] = s.amount);
+      
+      jaList.filter(c => !c.archived).forEach(c => {
+        row[`[保険] ${c.name}`] = calcJA(c, new Date(d.date)).value;
+      });
+      return row;
+    });
+
+    const allKeys = Array.from(new Set(itemData.flatMap(Object.keys))).filter(k => k !== "date");
+    const detailKeys = detailPrefix === "[現金]" 
+      ? allKeys.filter(k => k.startsWith("[銀行]") || k.startsWith("[外貨]"))
+      : allKeys.filter(k => k.startsWith(detailPrefix));
+
+    return (
+      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{title}</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
+              <button onClick={() => setMode("total")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: mode==="total" ? C.acc : "transparent", color: mode==="total" ? "#fff" : C.muted, fontWeight: 600 }}>合計推移</button>
+              <button onClick={() => setMode("itemized")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: mode==="itemized" ? C.acc : "transparent", color: mode==="itemized" ? "#fff" : C.muted, fontWeight: 600 }}>銘柄/口座別推移</button>
+            </div>
+            <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
+              <button onClick={() => setRange("year")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: range==="year" ? C.acc : "transparent", color: range==="year" ? "#fff" : C.muted, fontWeight: 600 }}>年次</button>
+              <button onClick={() => setRange("month")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: range==="month" ? C.acc : "transparent", color: range==="month" ? "#fff" : C.muted, fontWeight: 600 }}>月次</button>
+              <button onClick={() => setRange("day")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: range==="day" ? C.acc : "transparent", color: range==="day" ? "#fff" : C.muted, fontWeight: 600 }}>日次</button>
+            </div>
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={mode === "total" ? totalData : itemData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+            <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+            <Tooltip formatter={(v) => fmt(v)} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            {mode === "total" ? (
+              <Line type="monotone" dataKey={mainKey} name={title.replace(/.*? /, "")} stroke={totalColor} strokeWidth={2.5} dot={{ r: 3 }} />
+            ) : (
+              detailKeys.map((k, idx) => (
+                <Line key={k} type="monotone" dataKey={k} name={k.replace(/^\[.*?\]\s*/, "")} stroke={`hsl(${(idx * 50) % 360}, 70%, 50%)`} strokeWidth={1.5} dot={{ r: 2 }} />
+              ))
+            )}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
 
   // 詳細データの再構成（銘柄・口座ごとの推移を簡単に描画できるように）
   // 形式: [ { date: "YYYY-MM-DD", "eMAXIS Slim...": 100000, "SBI証券...": 50000 }, ... ]
-  const detailChartData = filteredDetailData.map(d => {
-    const row = { date: d.date };
-    if (d.securities) d.securities.forEach(s => row[`[証券] ${s.name} (${s.owner})`] = s.amount);
-    if (d.ideco)      d.ideco.forEach(s => row[`[iDeCo] ${s.name}`] = s.amount);
-    if (d.bank)       d.bank.forEach(s => row[`[銀行] ${s.name}`] = s.amount);
-    if (d.sony)       d.sony.forEach(s => row[`[保険] ${s.name}`] = s.amount);
-    return row;
-  });
-
-  const getLineKeys = (prefix) => {
-    const keys = new Set();
-    detailChartData.forEach(d => {
-      Object.keys(d).forEach(k => {
-        if (k.startsWith(prefix)) keys.add(k);
-      });
-    });
-    return Array.from(keys);
-  };
 
   if (!assetsLoaded) {
     return (
@@ -858,115 +936,7 @@ export default function Dashboard() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* — 分類別：有価資産 — */}
-                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>📈 有価資産</div>
-                    <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
-                      <button onClick={() => setSecViewMode("trend")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: secViewMode==="trend" ? C.acc : "transparent", color: secViewMode==="trend" ? "#fff" : C.muted, fontWeight: 600 }}>合計推移</button>
-                      <button onClick={() => setSecViewMode("detail")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: secViewMode==="detail" ? C.acc : "transparent", color: secViewMode==="detail" ? "#fff" : C.muted, fontWeight: 600 }}>銘柄別推移</button>
-                      <button onClick={() => setSecViewMode("breakdown")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: secViewMode==="breakdown" ? C.acc : "transparent", color: secViewMode==="breakdown" ? "#fff" : C.muted, fontWeight: 600 }}>銘柄別内訳</button>
-                    </div>
-                  </div>
-                  {secViewMode === "trend" ? (
-                    <ResponsiveContainer width="100%" height={200}>
-                      <LineChart data={filteredTrendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
-                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
-                        <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
-                        <Tooltip formatter={(v) => fmt(v)} />
-                        <Line type="monotone" dataKey="securities" name="有価資産" stroke="#0052cc" strokeWidth={2.5} dot={{ r: 3 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : secViewMode === "detail" ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={detailChartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
-                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
-                        <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
-                        <Tooltip formatter={(v) => fmt(v)} />
-                        <Legend wrapperStyle={{ fontSize: 10 }} />
-                        {getLineKeys("[証券]").map((k, i) => <Line key={k} type="monotone" dataKey={k} name={k.replace("[証券] ", "")} stroke={["#0052cc", "#0284c7", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#f43f5e", "#14b8a6"][i%8]} strokeWidth={1.5} dot={{ r: 1 }} />)}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div>
-                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>※ 現時点（{DATA_DATE}）の内訳</div>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                        <thead>
-                          <tr>
-                            <SortTh label="銘柄" sortKey="name" tableId="trend_breakdown" getSort={getSort} onSort={onSort} />
-                            <SortTh label="名義" sortKey="owner" tableId="trend_breakdown" getSort={getSort} onSort={onSort} />
-                            <SortTh label="評価額" sortKey="amount" tableId="trend_breakdown" getSort={getSort} onSort={onSort} right />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(getSort("trend_breakdown").key ? applySort(RF_ITEMS, "trend_breakdown") : [...RF_ITEMS].sort((a, b) => b.amount - a.amount)).map((it, i) => (
-                            <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
-                              <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.name}</td>
-                              <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{it.owner}</td>
-                              <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
 
-                {/* — 分類別：iDeCo — */}
-                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>🛡 iDeCo</div>
-                  {trendHasIdeco ? (
-                    <ResponsiveContainer width="100%" height={180}>
-                      <LineChart data={detailChartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
-                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
-                        <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
-                        <Tooltip formatter={(v) => fmt(v)} />
-                        <Legend wrapperStyle={{ fontSize: 11 }} />
-                        {getLineKeys("[iDeCo]").map((k, i) => <Line key={k} type="monotone" dataKey={k} name={k.replace("[iDeCo] ", "")} stroke={["#8b5cf6", "#a855f7", "#d946ef", "#ec4899"][i%4]} strokeWidth={2} dot={{ r: 2 }} />)}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div style={{ fontSize: 12, color: C.muted, textAlign: "center", padding: "20px 0" }}>iDeCoデータなし</div>
-                  )}
-                </div>
-
-                {/* — 分類別：現金 — */}
-                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>🏦 現金</div>
-                  {trendHasBank ? (
-                    <ResponsiveContainer width="100%" height={240}>
-                      <LineChart data={detailChartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
-                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
-                        <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
-                        <Tooltip formatter={(v) => fmt(v)} />
-                        <Legend wrapperStyle={{ fontSize: 10 }} />
-                        {getLineKeys("[銀行]").map((k, i) => <Line key={k} type="monotone" dataKey={k} name={k.replace("[銀行] ", "")} stroke={["#0284c7", "#0ea5e9", "#38bdf8", "#0369a1"][i%4]} strokeWidth={2} dot={{ r: 2 }} />)}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div style={{ fontSize: 12, color: C.muted, textAlign: "center", padding: "20px 0" }}>現金データなし</div>
-                  )}
-                </div>
-
-                {/* — 分類別：保険年金 — */}
-                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>💰 保険年金（ソニー生命＋JA共済）</div>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={filteredTrendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
-                      <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
-                      <Tooltip formatter={(v) => fmt(v)} />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Line type="monotone" dataKey="insurance" name="保険年金合計" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="sony" name="ソニー生命のみ" stroke="#f97316" strokeWidth={1.5} dot={{ r: 2 }} strokeDasharray="4 3" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
               </>
             )}
           </div>
@@ -1161,23 +1131,17 @@ export default function Dashboard() {
         const manualJpy = latestManualByName(manualCash, "JPY");
         const manualUsd = latestManualByName(manualCash, "USD");
         const manualThb = latestManualByName(manualCash, "THB");
-        const jpyRows = applySort(
-          [...BANK_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualJpy.map(e => ({ name: e.name, amount: e.amount, lastUpdate: e.date, src: "MANUAL" }))],
-          "bank_jpy", ["lastUpdate"]
-        );
-        const jpyTotal = jpyRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.amount || 0), 0);
+        const jpyData = [...BANK_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualJpy.map(e => ({ name: e.name, amount: e.amount, lastUpdate: e.date, src: "MANUAL" }))];
+        const sortedJpyRows = applySort(jpyData, "bank_jpy", ["lastUpdate"]);
+        const jpyTotalLocal = sortedJpyRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.amount || 0), 0);
 
-        const usdRows = applySort(
-          [...USD_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualUsd.map(e => ({ name: e.name, usd: e.amount, lastUpdate: e.date, src: "MANUAL" }))],
-          "bank_usd", ["lastUpdate"]
-        );
-        const usdRowsTotal = usdRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.usd || 0), 0);
+        const usdData = [...USD_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualUsd.map(e => ({ name: e.name, usd: e.amount, lastUpdate: e.date, src: "MANUAL" }))];
+        const sortedUsdRows = applySort(usdData, "bank_usd", ["lastUpdate"]);
+        const usdRowsTotalLocal = sortedUsdRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.usd || 0), 0);
 
-        const thbRows = applySort(
-          manualThb.map(e => ({ name: e.name, thb: e.amount, lastUpdate: e.date, src: "MANUAL" })),
-          "bank_thb", ["lastUpdate"]
-        );
-        const thbRowsTotal = thbRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.thb || 0), 0);
+        const thbData = manualThb.map(e => ({ name: e.name, thb: e.amount, lastUpdate: e.date, src: "MANUAL" }));
+        const sortedThbRows = applySort(thbData, "bank_thb", ["lastUpdate"]);
+        const thbRowsTotalLocal = sortedThbRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.thb || 0), 0);
 
         const toggleExclusion = (name) => {
           setBankExclusions(prev => {
@@ -1212,7 +1176,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {jpyRows.map((it, i) => {
+                  {sortedJpyRows.map((it, i) => {
                     const isEx = (bankExclusions || {})[it.name];
                     return (
                     <tr key={i} style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
@@ -1233,7 +1197,7 @@ export default function Dashboard() {
                   })}
                   <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
                     <td style={{ padding: "10px 8px" }}>合計</td>
-                    <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace" }}>{fmt(jpyTotal)}</td>
+                    <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace" }}>{fmt(jpyTotalLocal)}</td>
                     <td colSpan={3}></td>
                   </tr>
                 </tbody>
@@ -1261,7 +1225,8 @@ export default function Dashboard() {
             {manualFormOpen === "USD" && (
               <ManualCashForm currency="USD" unitLabel="残高（USD）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
             )}
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8, minWidth: "500px" }}>
               <thead>
                 <tr>
                   <SortTh label="名称・口座名" sortKey="name" tableId="bank_usd" getSort={getSort} onSort={onSort} />
@@ -1272,7 +1237,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {usdRows.map((it, i) => (
+                {sortedUsdRows.map((it, i) => (
                   <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
                     <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
                       {it.name}
@@ -1291,15 +1256,16 @@ export default function Dashboard() {
                 <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
                   <td style={{ padding: "10px 8px" }}>合計</td>
                   <td style={{ padding: "10px 8px", textAlign: "right", color: C.amber, fontFamily: "monospace" }}>
-                    ${usdRowsTotal.toLocaleString("en-US", { minimumFractionDigits:2 })}
+                    ${usdRowsTotalLocal.toLocaleString("en-US", { minimumFractionDigits:2 })}
                   </td>
                   <td style={{ padding: "10px 8px", textAlign: "right", color: C.text, fontFamily: "monospace" }}>
-                    {usdJpy ? fmt(Math.round(usdRowsTotal * usdJpy)) : "─"}
+                    {usdJpy ? fmt(Math.round(usdRowsTotalLocal * usdJpy)) : "─"}
                   </td>
                   <td colSpan={2}></td>
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* ── タイバーツ資産 ── */}
@@ -1320,7 +1286,8 @@ export default function Dashboard() {
             {manualFormOpen === "THB" && (
               <ManualCashForm currency="THB" unitLabel="残高（THB）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
             )}
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8, minWidth: "500px" }}>
               <thead>
                 <tr>
                   <SortTh label="名称・口座名" sortKey="name" tableId="bank_thb" getSort={getSort} onSort={onSort} />
@@ -1331,7 +1298,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {thbRows.map((it, i) => (
+                {sortedThbRows.map((it, i) => (
                   <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
                     <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
                       {it.name}
@@ -1347,19 +1314,20 @@ export default function Dashboard() {
                     <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
                   </tr>
                 ))}
-                {thbRows.length === 0 && (
+                {sortedThbRows.length === 0 && (
                   <tr><td colSpan={5} style={{ padding: "16px 8px", textAlign: "center", color: C.muted, fontSize: 12 }}>「+ 現金手入力」から登録してください</td></tr>
                 )}
-                {thbRows.length > 0 && (
+                {sortedThbRows.length > 0 && (
                   <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
                     <td style={{ padding: "10px 8px" }}>合計</td>
-                    <td style={{ padding: "10px 8px", textAlign: "right", color: C.amber, fontFamily: "monospace" }}>฿{thbRowsTotal.toLocaleString("en-US")}</td>
-                    <td style={{ padding: "10px 8px", textAlign: "right", color: C.text, fontFamily: "monospace" }}>{thbJpy ? fmt(Math.round(thbRowsTotal * thbJpy)) : "─"}</td>
+                    <td style={{ padding: "10px 8px", textAlign: "right", color: C.amber, fontFamily: "monospace" }}>฿{thbRowsTotalLocal.toLocaleString("en-US")}</td>
+                    <td style={{ padding: "10px 8px", textAlign: "right", color: C.text, fontFamily: "monospace" }}>{thbJpy ? fmt(Math.round(thbRowsTotalLocal * thbJpy)) : "─"}</td>
                     <td colSpan={2}></td>
                   </tr>
                 )}
               </tbody>
             </table>
+            </div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 10 }}>※ SCB（タイ）はAPI/スクレイピング非対応のため手入力管理。総合資産（GRAND_TOTAL）には現状未加算です</div>
           </div>
         </div>
@@ -1409,9 +1377,20 @@ export default function Dashboard() {
           </div>
 
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-            <SecHead title="ソニー生命（解約返戻金）" total={SONY_TOTAL} cost={SONY_COST} pnl={SONY_PNL}/>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: `2px solid ${C.line}`, paddingBottom: 12 }}>
+              <SecHead title="保険・個人年金" total={EFFECTIVE_SONY_TOTAL + jaTotal} cost={(SONY_COST - SONY_ITEMS.filter(it => (insExclusions || {})[it.name]).reduce((s, i) => s + (i.cost || 0), 0)) + jaCost} pnl={(EFFECTIVE_SONY_TOTAL - (SONY_COST - SONY_ITEMS.filter(it => (insExclusions || {})[it.name]).reduce((s, i) => s + (i.cost || 0), 0))) + jaPnl} />
+              <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: C.muted }}>
+                <input type="checkbox" checked={showArchivedIns} onChange={e => setShowArchivedIns(e.target.checked)} />
+                アーカイブを表示
+              </label>
+            </div>
+
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 8, marginTop: 16, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 4, height: 16, background: "#f97316", borderRadius: 2 }}></div>
+              ソニー生命
+            </div>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: "600px" }}>
                 <thead>
                   <tr>
                     <SortTh label="契約" sortKey="name" tableId="sony" getSort={getSort} onSort={onSort} />
@@ -1419,47 +1398,48 @@ export default function Dashboard() {
                     <SortTh label="解約返戻金" sortKey="amount" tableId="sony" getSort={getSort} onSort={onSort} right />
                     <SortTh label="払込保険料" sortKey="cost" tableId="sony" getSort={getSort} onSort={onSort} right />
                     <Th right>損益</Th>
+                    <Th right>状態</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {applySort(SONY_ITEMS, "sony").map(it => {
+                    const isEx = (insExclusions || {})[it.name];
+                    if (isEx && !showArchivedIns) return null;
                     const gain = it.amount - it.cost;
                     return (
-                      <tr key={it.id} style={{ borderBottom: `1px solid ${C.line}` }}>
+                      <tr key={it.id} style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
                         <td style={{ padding: "8px", color: C.text, fontWeight: 500, whiteSpace: "nowrap" }}>{it.name} <Tag src="SL"/></td>
                         <td style={{ padding: "8px", color: C.muted, fontSize: 11, whiteSpace: "nowrap" }}>{it.certNo}</td>
                         <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600, whiteSpace: "nowrap" }}>{fmt(it.amount)}</td>
                         <td style={{ padding: "8px", textAlign: "right", color: C.muted, fontFamily: "monospace", whiteSpace: "nowrap" }}>{fmt(it.cost)}</td>
                         <td style={{ padding: "8px", textAlign: "right", color: pnlClr(gain), fontSize: 12, fontWeight: 700, fontFamily: "monospace", whiteSpace: "nowrap" }}>{sgn(gain)}{fmt(gain)}</td>
+                        <td style={{ padding: "8px", textAlign: "right" }}>
+                          <button onClick={() => {
+                            setInsExclusions(prev => {
+                              const next = { ...prev, [it.name]: !prev[it.name] };
+                              localStorage.setItem("okano-ins-exclusions-v1", JSON.stringify(next));
+                              return next;
+                            });
+                          }} style={{ background: "none", border: "none", color: isEx ? C.acc : C.muted, cursor: "pointer", fontSize: 11 }}>
+                            {isEx ? "復元" : "アーカイブ"}
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
-          </div>
 
-
-
-          {/* JA共済 */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "20px 0 12px", borderLeft: `4px solid #10b981`, paddingLeft: 12 }}>
-            <div>
-              <span style={{ color: C.text, fontWeight: 700, fontSize: 15 }}>JA共済（個人年金）</span>
-              <span style={{ color: C.text, fontWeight: 600, fontSize: 14, marginLeft: 8 }}>{fmt(jaTotal)}</span>
-              <span style={{ color: pnlClr(jaPnl), fontSize: 12, fontWeight: 700, marginLeft: 6 }}>
-                {sgn(jaPnl)}{fmt(jaPnl)} ({sgn(jaPnl)}{jaCost > 0 ? (jaPnl/jaCost*100).toFixed(1) : 0}%)
-              </span>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 12, marginTop: 24, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 4, height: 16, background: "#10b981", borderRadius: 2 }}></div>
+              JA共済
             </div>
-            <button onClick={() => setAddMode(true)} style={{
-              background: isDark ? "#14532d" : "#dcfce7", border: `1px solid ${isDark ? "#166534" : "#bbf7d0"}`, color: isDark ? "#34d399" : "#15803d",
-              borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
-            }}>＋追加</button>
-          </div>
-
-          {jaCalc.map(c => (
+          {jaCalc.filter(c => c.id === "JA-001" && (showArchivedIns || !c.archived)).map(c => (
             <div key={c.id} style={{
               background: C.card, border: `1px solid ${editJa?.id===c.id ? C.acc : C.line}`,
-              borderRadius: 16, padding: "16px", marginBottom: 12, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.02)"
+              borderRadius: 16, padding: "16px", marginBottom: 12, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.02)",
+              opacity: c.archived ? 0.6 : 1
             }}>
               {editJa?.id === c.id ? (
                 <JaEditForm contract={editJa} onChange={setEditJa} onSave={() => saveJa(editJa)} onCancel={() => setEditJa(null)} />
@@ -1517,6 +1497,79 @@ export default function Dashboard() {
                       10年総額: <span style={{ color: C.text, fontWeight: 600 }}>{fmt(c.confirmedAnnualAmount * 10)}</span>
                       <span style={{ marginLeft:12 }}>最低保証: {fmt(c.minAnnualAmount * 10)}</span>
                     </div>
+                  </div>
+
+                  {c.notes && (
+                    <pre style={{ fontSize: 11, color: C.muted, margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.6, background: isDark ? "#16253b" : "#f8fafc", padding: "10px", borderRadius: 8, border: `1px solid ${C.line}` }}>
+                      {c.notes}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+          </div>
+
+          {/* 手動追加分 */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "32px 0 12px", borderLeft: `4px solid ${C.acc}`, paddingLeft: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>手動追加（年金等）</div>
+            <button onClick={() => setAddMode(true)} style={{
+              background: isDark ? "#1e3a8a" : "#dbeafe", border: `1px solid ${isDark ? "#1e40af" : "#bfdbfe"}`, color: isDark ? "#60a5fa" : "#1d4ed8",
+              borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
+            }}>＋追加</button>
+          </div>
+
+          {addMode && (
+            <JaAddForm onAdd={addJa} onCancel={() => setAddMode(false)} />
+          )}
+
+          {jaCalc.filter(c => c.id !== "JA-001" && (showArchivedIns || !c.archived)).map(c => (
+            <div key={c.id} style={{
+              background: C.card, border: `1px solid ${editJa?.id===c.id ? C.acc : C.line}`,
+              borderRadius: 16, padding: "16px", marginBottom: 12, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.02)",
+              opacity: c.archived ? 0.6 : 1
+            }}>
+              {editJa?.id === c.id ? (
+                <JaEditForm contract={editJa} onChange={setEditJa} onSave={() => saveJa(editJa)} onCancel={() => setEditJa(null)} />
+              ) : (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                    <div>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: C.acc }}>{c.name}</span>
+                      <Tag src="MANUAL"/>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => setEditJa({ ...c })} style={{ background: isDark ? "#1e2d45" : "#f1f5f9", border: "none", color: C.text, borderRadius: 6, padding: "4px 10px", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>編集</button>
+                      <button onClick={() => archiveJa(c.id)} style={{ background: isDark ? "#1e2d45" : "#f1f5f9", border: "none", color: C.muted, borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>
+                        {c.archived ? "復元" : "アーカイブ"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px", fontSize: 12, marginBottom: 12, borderBottom: `1px solid ${C.line}`, paddingBottom: 12 }}>
+                    {[
+                      ["証券番号",   c.certNo],
+                      ["積立額",     `¥${c.monthlyPayment.toLocaleString()}/月`],
+                      ["契約開始日", fmtDate(c.startDate)],
+                    ].map(([k, v]) => (
+                      <div key={k}>
+                        <span style={{ color: C.muted }}>{k}: </span>
+                        <span style={{ color: C.text, fontWeight: 500 }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, background: isDark ? "#16253b" : "#f8fafc", borderRadius: 10, padding: "10px", marginBottom: 12 }}>
+                    {[
+                      { label:"払込元本", value:fmt(c.cost),  color:C.muted },
+                      { label:"計算評価額",       value:fmt(c.value), color:C.text },
+                      { label:"含み益",           value:`${sgn(c.pnl)}${fmt(c.pnl)}`, color:pnlClr(c.pnl) },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>{label}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color, marginTop: 4, fontFamily: "monospace" }}>{value}</div>
+                      </div>
+                    ))}
                   </div>
 
                   {c.notes && (
