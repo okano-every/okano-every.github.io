@@ -730,7 +730,7 @@ export default function Dashboard() {
             : usdJpy
             ? <>
                 <span style={{ color: C.green, fontWeight: 700 }}>USD/JPY {usdJpy.toFixed(2)}</span>
-                <span style={{ color: C.muted }}>外貨合計 ${USD_SUM.toLocaleString("en-US",{minimumFractionDigits:2})} ≈ <strong style={{color: C.text}}>{fmt(usdJpySum)}</strong></span>
+                <span style={{ color: C.muted }}>外貨合計 ${USD_SUM.toLocaleString("en-US",{minimumFractionDigits:2})} ≈ <strong style={{color: C.text}}>{fmt(EFFECTIVE_USD_JPY_SUM)}</strong></span>
               </>
             : <span style={{ color: C.amber, fontWeight: 600 }}>⚠️ レート取得失敗（オフラインまたは制限）</span>
           }
@@ -766,7 +766,7 @@ export default function Dashboard() {
               { label:"保険・年金合計",    value:fmt(SONY_TOTAL + jaTotal),  sub:"ソニー生命＋JA共済",        clr:"#10b981", tab:"insurance" },
               { label:"iDeCo（評価益）",  value:fmt(IDECO_TOTAL),           sub:`+${fmt(IDECO_PNL)}`,       clr:C.purple,  tab:"insurance" },
               { label:"債券",            value:fmt(pieBonds),               sub:"国内債券・証券口座内現金等",    clr:"#6366f1", tab:"banks" },
-              { label:"外貨",            value:fmt(usdJpySum),              sub:"$" + USD_SUM.toLocaleString("en-US",{minimumFractionDigits:2}), clr:"#f59e0b", tab:"banks" },
+              { label:"外貨",            value:fmt(EFFECTIVE_USD_JPY_SUM),              sub:"$" + USD_SUM.toLocaleString("en-US",{minimumFractionDigits:2}), clr:"#f59e0b", tab:"banks" },
             ].map(({ label, value, sub, clr, tab: targetTab }) => (
               <div key={label} onClick={() => setTab(targetTab)} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", cursor: "pointer", transition: "transform .15s, box-shadow .15s" }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 10px -3px rgba(0,0,0,0.12)"; }}
@@ -1020,7 +1020,7 @@ export default function Dashboard() {
                   {[
                     { label:"現金・預金（参考）",  value:BANK_TOTAL },
                     { label:"債券（参考）", value:pieBonds },
-                    { label:"外貨（参考）", value:usdJpySum },
+                    { label:"外貨（参考）", value:EFFECTIVE_USD_JPY_SUM },
                   ].map(r => (
                     <tr key={r.label} style={{ borderBottom: `1px solid ${C.line}` }}>
                       <td style={{ padding: "8px 8px", fontSize: 12, color: C.muted }}>{r.label}</td>
