@@ -320,10 +320,22 @@ export default function SavingsPlan() {
         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
         display: "flex",
         alignItems: "flex-end",
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
         padding: "0 16px 14px 16px",
         boxSizing: "border-box"
       }}>
+        <button
+          onClick={() => { window.location.href = "/"; }}
+          style={{
+            display: "flex", alignItems: "center", gap: 4,
+            padding: "6px 12px", borderRadius: 8,
+            border: `1px solid rgba(255,255,255,0.3)`, background: "rgba(255, 255, 255, 0.2)",
+            fontSize: 12, color: "#ffffff", cursor: "pointer",
+            fontWeight: 700, transition: "all 0.2s"
+          }}
+        >
+          ← ポータルへ
+        </button>
         <button 
           onClick={toggleTheme}
           style={{
@@ -349,18 +361,6 @@ export default function SavingsPlan() {
       {/* ── ヘッダー ── */}
       <div style={{ background: C.card, padding: "16px 20px", borderBottom: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button
-            onClick={() => { window.location.href = "/"; }}
-            style={{
-              display: "flex", alignItems: "center", gap: 4,
-              padding: "6px 12px", borderRadius: 8,
-              border: `1px solid ${C.line}`, background: C.bg,
-              fontSize: 12, color: C.muted, cursor: "pointer",
-              fontWeight: 600, transition: "all 0.2s"
-            }}
-          >
-            ← ポータルへ
-          </button>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: C.text, letterSpacing: "-0.5px" }}>積立設定管理</div>
           </div>

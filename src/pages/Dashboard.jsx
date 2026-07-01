@@ -671,10 +671,22 @@ export default function Dashboard() {
         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
         display: "flex",
         alignItems: "flex-end",       // ボタンを下側に配置して親指を届きやすく
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
         padding: "0 16px 14px 16px",  // 下部に程よいマージン
         boxSizing: "border-box"
       }}>
+        <button
+          onClick={() => window.history.back()}
+          style={{
+            display: "flex", alignItems: "center", gap: 4,
+            padding: "6px 12px", borderRadius: 8, flexShrink: 0,
+            border: `1px solid rgba(255,255,255,0.3)`, background: "rgba(255, 255, 255, 0.2)",
+            fontSize: 12, color: "#ffffff", cursor: "pointer",
+            fontWeight: 700, transition: "all 0.2s"
+          }}
+        >
+          ← ポータルへ
+        </button>
         <button 
           onClick={toggleTheme}
           style={{
@@ -700,18 +712,6 @@ export default function Dashboard() {
       {/* ── ヘッダー ── */}
       <div style={{ background: C.card, borderRadius: 16, padding: "20px", marginBottom: 16, border: `1px solid ${C.line}`, boxShadow: isDark ? "0 4px 6px -1px rgba(0,0,0,0.5)" : "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
-          <button
-            onClick={() => window.history.back()}
-            style={{
-              display: "flex", alignItems: "center", gap: 4,
-              padding: "6px 12px", borderRadius: 8, flexShrink: 0,
-              border: `1px solid ${C.line}`, background: C.bg,
-              fontSize: 12, color: C.muted, cursor: "pointer",
-              fontWeight: 600, transition: "all 0.2s", marginTop: 2
-            }}
-          >
-            ← ポータルへ
-          </button>
           <div>
             <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.05em" }}>岡野ファミリー 総合資産</div>
             <div style={{ fontSize: 32, fontWeight: 800, color: isDark ? "#ffffff" : C.text, marginTop: 4, letterSpacing: "-0.02em" }}>

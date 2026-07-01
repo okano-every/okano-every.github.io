@@ -122,10 +122,22 @@ export default function Changelog() {
         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
         display: "flex",
         alignItems: "flex-end",
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
         padding: "0 16px 14px 16px",
         boxSizing: "border-box"
       }}>
+        <button
+          onClick={() => { window.location.href = "/"; }}
+          style={{
+            display: "flex", alignItems: "center", gap: 4,
+            padding: "6px 12px", borderRadius: 8,
+            border: `1px solid rgba(255,255,255,0.3)`, background: "rgba(255, 255, 255, 0.2)",
+            fontSize: 12, color: "#ffffff", cursor: "pointer",
+            fontWeight: 700, transition: "all 0.2s"
+          }}
+        >
+          ← ポータルへ
+        </button>
         <button 
           onClick={() => {
             const n = isDark ? "light" : "dark";
@@ -155,16 +167,6 @@ export default function Changelog() {
       {/* ヘッダー */}
       <div style={{ background: C.card, borderBottom: `1px solid ${C.line}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => { window.location.href = "/"; }}
-            style={{
-              display: "flex", alignItems: "center", gap: 4,
-              padding: "6px 12px", borderRadius: 8,
-              border: `1px solid ${C.line}`, background: C.bg,
-              fontSize: 12, color: C.muted, cursor: "pointer",
-              fontWeight: 600, transition: "all 0.2s"
-            }}>
-            ← ポータルへ
-          </button>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: C.text, letterSpacing: "-0.5px" }}>更新履歴</div>
           </div>
