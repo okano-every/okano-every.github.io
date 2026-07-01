@@ -531,11 +531,11 @@ export default function Dashboard() {
   const jaCost   = jaCalc.reduce((s, c) => s + c.cost,  0);
   const jaPnl    = jaCalc.reduce((s, c) => s + c.pnl,   0);
 
-  const excludedJpySum = BANK_ITEMS.filter(it => bankExclusions[it.name]).reduce((s, i) => s + i.amount, 0);
-  const excludedUsdJpySum = USD_ITEMS.filter(it => bankExclusions[it.name]).reduce((s, i) => s + Math.round(i.usd * (usdJpy || 0)), 0);
+  const excludedJpySum = BANK_ITEMS.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + i.amount, 0);
+  const excludedUsdJpySum = USD_ITEMS.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + Math.round(i.usd * (usdJpy || 0)), 0);
   const GRAND_TOTAL = MT_TOTAL + MF_UNIQUE + SONY_TOTAL + IDECO_ADJ + jaTotal - excludedJpySum - excludedUsdJpySum;
   const EFFECTIVE_BANK_TOTAL = BANK_TOTAL - excludedJpySum;
-  const EFFECTIVE_USD_SUM = USD_SUM - USD_ITEMS.filter(it => bankExclusions[it.name]).reduce((s, i) => s + i.usd, 0);
+  const EFFECTIVE_USD_SUM = USD_SUM - USD_ITEMS.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + i.usd, 0);
   const EFFECTIVE_USD_JPY_SUM = usdJpy ? Math.round(EFFECTIVE_USD_SUM * usdJpy) : 0;
 
   const pnlRows = [
@@ -1165,19 +1165,19 @@ export default function Dashboard() {
           [...BANK_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualJpy.map(e => ({ name: e.name, amount: e.amount, lastUpdate: e.date, src: "MANUAL" }))],
           "bank_jpy", ["lastUpdate"]
         );
-        const jpyTotal = jpyRows.filter(r => !bankExclusions[r.name]).reduce((s, r) => s + Number(r.amount || 0), 0);
+        const jpyTotal = jpyRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.amount || 0), 0);
 
         const usdRows = applySort(
           [...USD_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualUsd.map(e => ({ name: e.name, usd: e.amount, lastUpdate: e.date, src: "MANUAL" }))],
           "bank_usd", ["lastUpdate"]
         );
-        const usdRowsTotal = usdRows.filter(r => !bankExclusions[r.name]).reduce((s, r) => s + Number(r.usd || 0), 0);
+        const usdRowsTotal = usdRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.usd || 0), 0);
 
         const thbRows = applySort(
           manualThb.map(e => ({ name: e.name, thb: e.amount, lastUpdate: e.date, src: "MANUAL" })),
           "bank_thb", ["lastUpdate"]
         );
-        const thbRowsTotal = thbRows.filter(r => !bankExclusions[r.name]).reduce((s, r) => s + Number(r.thb || 0), 0);
+        const thbRowsTotal = thbRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.thb || 0), 0);
 
         const toggleExclusion = (name) => {
           setBankExclusions(prev => {
@@ -1213,7 +1213,7 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {jpyRows.map((it, i) => {
-                    const isEx = bankExclusions[it.name];
+                    const isEx = (bankExclusions || {})[it.name];
                     return (
                     <tr key={i} style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
                       <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>

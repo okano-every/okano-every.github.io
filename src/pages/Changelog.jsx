@@ -104,6 +104,43 @@ export default function Changelog() {
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       paddingBottom: 60,
     }}>
+      {/* ── スマホ画面上部の押し下げ用アクセントバー（高さを2.5倍の90pxに拡張＆ボタン位置調整） ── */}
+      <div style={{ 
+        background: C.acc, 
+        height: "90px", 
+        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "flex-end",
+        padding: "0 16px 14px 16px",
+        boxSizing: "border-box"
+      }}>
+        <button 
+          onClick={() => {
+            const n = isDark ? "light" : "dark";
+            setTheme(n);
+            localStorage.setItem("okano-app-theme", n);
+          }}
+          style={{
+            background: "rgba(255, 255, 255, 0.2)",
+            border: "none",
+            borderRadius: "20px",
+            color: "#fff",
+            padding: "6px 16px",
+            fontSize: "12px",
+            fontWeight: "700",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            outline: "none",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+          }}
+        >
+          {isDark ? "☀️ LIGHT" : "🌙 DARK"}
+        </button>
+      </div>
+
       {/* ヘッダー */}
       <div style={{ background: C.card, borderBottom: `1px solid ${C.line}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -118,20 +155,9 @@ export default function Changelog() {
             ← ポータルへ
           </button>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>📋 更新履歴</div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>岡野ファミリー 資産管理ポータル — バージョン履歴</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: C.text, letterSpacing: "-0.5px" }}>更新履歴</div>
           </div>
         </div>
-        <button onClick={() => {
-          const n = isDark ? "light" : "dark";
-          setTheme(n);
-          localStorage.setItem("okano-app-theme", n);
-        }} style={{
-          background: isDark ? "#1e2d45" : "#f1f5f9", border: "none", borderRadius: 20,
-          color: C.muted, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
-        }}>
-          {isDark ? "☀️ LIGHT" : "🌙 DARK"}
-        </button>
       </div>
 
       <div style={{ padding: "20px 20px 0", maxWidth: 720 }}>
