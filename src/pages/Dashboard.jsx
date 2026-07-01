@@ -257,10 +257,10 @@ function latestManualByName(entries, currency) {
   return Object.values(byName);
 }
 
-function ManualCashForm({ currency, unitLabel, onSubmit, onCancel }) {
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState(0);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+function ManualCashForm({ currency, unitLabel, onSubmit, onCancel, initialData }) {
+  const [name, setName] = useState(initialData?.name || "");
+  const [amount, setAmount] = useState(initialData?.amount || 0);
+  const [date, setDate] = useState(initialData?.date || new Date().toISOString().slice(0, 10));
   const fieldStyle = {
     width: "100%", background: "#ffffff", border: `1px solid ${C.line}`, color: "#0f172a",
     borderRadius: 8, padding: "8px 12px", fontSize: 13, boxSizing: "border-box", marginTop: 4,
@@ -287,10 +287,10 @@ function ManualCashForm({ currency, unitLabel, onSubmit, onCancel }) {
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <button
-          onClick={() => { if (name.trim()) onSubmit({ currency, name: name.trim(), amount, date, source: "手入力" }); }}
+          onClick={() => { if (name.trim()) onSubmit({ id: initialData?.id, currency, name: name.trim(), amount, date, source: "手入力" }); }}
           style={{ background: C.acc, border: "none", color: "#fff", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
         >
-          追加
+          {initialData ? "保存" : "追加"}
         </button>
         <button onClick={onCancel} style={{ background: "#f1f5f9", border: "none", color: "#64748b", borderRadius: 8, padding: "7px 14px", fontSize: 12, cursor: "pointer" }}>
           キャンセル
@@ -443,10 +443,10 @@ function spSaveData(list) {
 // ================================================================
 // 各種定義
 // ================================================================
-const TABS   = ["summary","pnl","securities","banks","insurance","missing"];
+const TABS   = ["summary","pnl","securities","banks","insurance","missing","settings"];
 const TAB_LB = {
   summary:"📊 サマリー", pnl:"💹 投資損益", securities:"📈 証券銘柄",
-  banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金", missing:"⚠️ 未連携",
+  banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金", missing:"⚠️ 未連携", settings:"⚙️ 設定"
 };
 
 
@@ -545,6 +545,7 @@ export default function Dashboard() {
   const [showArchivedIns, setShowArchivedIns] = useState(false);
   const [manualCash, setManualCash] = useState([]);
   const [manualFormOpen, setManualFormOpen] = useState(null); // 'JPY' | 'USD' | 'THB' | null
+  const [manualEditItem, setManualEditItem] = useState(null); // { id, name, amount, date, currency }
   const [sortState, setSortState] = useState({}); // { tableId: { key, dir } }
 
   // ── 積立設定管理（証券銘柄タブ内） ──
@@ -640,13 +641,23 @@ export default function Dashboard() {
     const next = [...manualCash, { ...entry, id: `MC-${Date.now()}` }];
     setManualCash(next);
     saveManualCash(next);
+    touchLocalTs();
+    setTimeout(triggerSync, 0);
     setManualFormOpen(null);
+  };
+  const editManualCash = (id, newEntry) => {
+    const next = manualCash.map(e => e.id === id ? { ...e, ...newEntry } : e);
+    setManualCash(next);
+    saveManualCash(next);
+    touchLocalTs();
+    setTimeout(triggerSync, 0);
   };
   const deleteManualCash = (id) => {
     const next = manualCash.filter((e) => e.id !== id);
     setManualCash(next);
     saveManualCash(next);
     touchLocalTs();
+    setTimeout(triggerSync, 0);
   };
 
 
@@ -655,6 +666,7 @@ export default function Dashboard() {
     setManualCash(next);
     saveManualCash(next);
     touchLocalTs();
+    setTimeout(triggerSync, 0);
   };
 
   // 資産データ（証券・銀行・外貨・iDeCo・ソニー生命）を実行時に取得
@@ -680,7 +692,7 @@ export default function Dashboard() {
   }, []);
 
   // ── 積立設定管理 ハンドラー ──
-  const spPersist = (next) => { setSpList(next); spSaveData(next); };
+  const spPersist = (next) => { setSpList(next); spSaveData(next); setTimeout(triggerSync, 0); };
   const spHandleAdd = (f) => { spPersist([...spList, { ...f, id: `SP-${Date.now()}`, archived: false, archivedDate: null }]); setSpAddMode(false); };
   const spHandleEdit = (f) => { spPersist(spList.map((i) => (i.id === f.id ? f : i))); setSpEditId(null); };
   const spHandleArchiveConfirm = (date) => {
@@ -694,6 +706,17 @@ export default function Dashboard() {
   };
 
   // ── 同期ハンドラー ──
+  const triggerSync = async () => {
+    if (!loadPat()) return;
+    const result = await syncData();
+    if (result.direction === "download") {
+      setManualCash(loadManualCash());
+      setBankExclusions(JSON.parse(localStorage.getItem("okano-bank-exclusions-v1") || "{}"));
+      setInsExclusions(JSON.parse(localStorage.getItem("okano-ins-exclusions-v1") || "{}"));
+      setSpList(spLoadData());
+    }
+  };
+
   const handleSync = async () => {
     setSyncLoading(true); setSyncStatus(null);
     savePat(syncPat); saveGistId(syncGistId);
@@ -720,8 +743,8 @@ export default function Dashboard() {
   const manualUsd = latestManualByName(manualCash, "USD");
   const manualThb = latestManualByName(manualCash, "THB");
 
-  const jpyRows = [...BANK_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualJpy.map(e => ({ name: e.name, amount: e.amount, lastUpdate: e.date, src: "MANUAL" }))];
-  const usdRows = [...USD_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualUsd.map(e => ({ name: e.name, usd: e.amount, lastUpdate: e.date, src: "MANUAL" }))];
+  const jpyRows = [...BANK_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualJpy.map(e => ({ name: e.name, amount: e.amount, lastUpdate: e.date, src: "MANUAL", id: e.id }))];
+  const usdRows = [...USD_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualUsd.map(e => ({ name: e.name, usd: e.amount, lastUpdate: e.date, src: "MANUAL", id: e.id }))];
   
   const excludedJpySum = jpyRows.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + (i.amount || 0), 0);
   const excludedUsdSum = usdRows.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + (i.usd || 0), 0);
@@ -1466,7 +1489,7 @@ export default function Dashboard() {
         const sortedUsdRows = applySort(usdData, "bank_usd", ["lastUpdate"]);
         const usdRowsTotalLocal = sortedUsdRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.usd || 0), 0);
 
-        const thbData = manualThb.map(e => ({ name: e.name, thb: e.amount, lastUpdate: e.date, src: "MANUAL" }));
+        const thbData = manualThb.map(e => ({ name: e.name, thb: e.amount, lastUpdate: e.date, src: "MANUAL", id: e.id }));
         const sortedThbRows = applySort(thbData, "bank_thb", ["lastUpdate"]);
         const thbRowsTotalLocal = sortedThbRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.thb || 0), 0);
 
@@ -1513,20 +1536,37 @@ export default function Dashboard() {
                     const isEx = (bankExclusions || {})[it.name];
                     if (isEx && !showArchivedJpy) return null;
                     return (
-                    <tr key={i} style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
-                      <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
-                        {it.name}
-                        {it.src === "MANUAL" && <ManualHistoryRow name={it.name} currency="JPY" entries={manualCash} unitFmt={fmt} onDelete={deleteManualCash} />}
-                      </td>
-                      <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
-                      <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
-                      <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
-                      <td style={{ padding: "8px", textAlign: "center" }}>
-                        <button onClick={() => toggleExclusion(it.name)} style={{ background: isEx ? C.amber : "transparent", border: `1px solid ${C.amber}`, color: isEx ? "#fff" : C.amber, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>
-                          {isEx ? "除外中" : "除外"}
-                        </button>
-                      </td>
-                    </tr>
+                    <React.Fragment key={i}>
+                      <tr style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
+                        <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
+                          {it.name}
+                          {it.src === "MANUAL" && <ManualHistoryRow name={it.name} currency="JPY" entries={manualCash} unitFmt={fmt} onDelete={deleteManualCash} />}
+                        </td>
+                        <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
+                        <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
+                        <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
+                        <td style={{ padding: "8px", textAlign: "center" }}>
+                          <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                            <button onClick={() => toggleExclusion(it.name)} style={{ background: isEx ? C.amber : "transparent", border: `1px solid ${C.amber}`, color: isEx ? "#fff" : C.amber, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>
+                              {isEx ? "除外中" : "除外"}
+                            </button>
+                            {it.src === "MANUAL" && (
+                              <>
+                                <button onClick={() => setManualEditItem({ id: it.id, name: it.name, amount: it.amount, date: it.lastUpdate, currency: "JPY" })} style={{ background: "transparent", border: `1px solid ${C.acc}`, color: C.acc, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>編集</button>
+                                <button onClick={() => deleteManualCash(it.id)} style={{ background: "transparent", border: `1px solid ${C.red}`, color: C.red, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>削除</button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      {manualEditItem?.id === it.id && (
+                        <tr>
+                          <td colSpan="5" style={{ padding: 0 }}>
+                            <ManualCashForm currency="JPY" unitLabel="金額（円）" onSubmit={(data) => { editManualCash(data.id, data); setManualEditItem(null); }} onCancel={() => setManualEditItem(null)} initialData={manualEditItem} />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                     );
                   })}
                   <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
@@ -1652,27 +1692,42 @@ export default function Dashboard() {
                 {sortedThbRows.map((it, i) => {
                   const isEx = (bankExclusions || {})[it.name];
                   if (isEx && !showArchivedThb) return null;
-                  return (
-                  <tr key={i} style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
-                    <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
-                      {it.name}
-                      <ManualHistoryRow name={it.name} currency="THB" entries={manualCash} unitFmt={(v) => "฿" + Number(v).toLocaleString("en-US")} onDelete={deleteManualCash} />
-                    </td>
-                    <td style={{ padding: "8px", textAlign: "right", color: C.amber, fontWeight: 700, fontFamily: "monospace" }}>
-                      ฿{Number(it.thb).toLocaleString("en-US")}
-                    </td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>
-                      {thbJpy ? fmt(Math.round(it.thb * thbJpy)) : "─"}
-                    </td>
-                    <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
-                    <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
-                    <td style={{ padding: "8px", textAlign: "center" }}>
-                      <button onClick={() => toggleExclusion(it.name)} style={{ background: isEx ? C.amber : "transparent", border: `1px solid ${C.amber}`, color: isEx ? "#fff" : C.amber, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>
-                        {isEx ? "除外中" : "除外"}
-                      </button>
-                    </td>
-                  </tr>
-                  );
+                  <React.Fragment key={i}>
+                    <tr style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
+                      <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
+                        {it.name}
+                        {it.src === "MANUAL" && <ManualHistoryRow name={it.name} currency="THB" entries={manualCash} unitFmt={(v) => "฿" + Number(v).toLocaleString("en-US")} onDelete={deleteManualCash} />}
+                      </td>
+                      <td style={{ padding: "8px", textAlign: "right", color: C.amber, fontWeight: 700, fontFamily: "monospace" }}>
+                        ฿{Number(it.thb).toLocaleString("en-US")}
+                      </td>
+                      <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>
+                        {thbJpy ? fmt(Math.round(it.thb * thbJpy)) : "ー"}
+                      </td>
+                      <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
+                      <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
+                      <td style={{ padding: "8px", textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                          <button onClick={() => toggleExclusion(it.name)} style={{ background: isEx ? C.amber : "transparent", border: `1px solid ${C.amber}`, color: isEx ? "#fff" : C.amber, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>
+                            {isEx ? "除外中" : "除外"}
+                          </button>
+                          {it.src === "MANUAL" && (
+                            <>
+                              <button onClick={() => setManualEditItem({ id: it.id, name: it.name, amount: it.thb, date: it.lastUpdate, currency: "THB" })} style={{ background: "transparent", border: `1px solid ${C.acc}`, color: C.acc, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>編集</button>
+                              <button onClick={() => deleteManualCash(it.id)} style={{ background: "transparent", border: `1px solid ${C.red}`, color: C.red, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>削除</button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {manualEditItem?.id === it.id && (
+                      <tr>
+                        <td colSpan="6" style={{ padding: 0 }}>
+                          <ManualCashForm currency="THB" unitLabel="金額（THB）" onSubmit={(data) => { editManualCash(data.id, data); setManualEditItem(null); }} onCancel={() => setManualEditItem(null)} initialData={manualEditItem} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 })}
                 {sortedThbRows.filter(r => !(bankExclusions || {})[r.name] || showArchivedThb).length === 0 && (
                   <tr><td colSpan={6} style={{ padding: "16px 8px", textAlign: "center", color: C.muted, fontSize: 12 }}>「+ 現金手入力」から登録してください</td></tr>
@@ -1947,73 +2002,64 @@ export default function Dashboard() {
 
 
 
-      {/* ── フッター ── */}
-      <div style={{ marginTop: 24, fontSize: 11, color: C.muted, textAlign: "center", borderTop: `1px solid ${C.line}`, paddingTop: 16, display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
-        <div>資産管理App {APP_VERSION} ｜ {DATA_DATE}</div>
-        <button
-          onClick={() => setSyncOpen(v => !v)}
-          style={{ background: "none", border: `1px solid ${C.line}`, color: C.muted, borderRadius: 8, padding: "4px 12px", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
-        >
-          🔄 デバイス間同期 (GitHub Gist)
-        </button>
-      </div>
-
-      {/* ── 同期モーダル ── */}
-      {syncOpen && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: C.card, borderRadius: 20, padding: "28px 32px", width: "min(420px, 92vw)", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: C.text, marginBottom: 4 }}>🔄 デバイス間同期</div>
-            <div style={{ fontSize: 11, color: C.muted, marginBottom: 20 }}>GitHub Gist を使ってデバイス間でデータを同期します</div>
+      {/* ── TAB: 設定 ── */}
+      {tab === "settings" && (
+        <div>
+          <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "20px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 8 }}>🔄 デバイス間同期 (GitHub Gist)</div>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 24 }}>GitHub Gist を使ってデバイス間でデータを同期します。データが変更されると自動で同期されます。</div>
 
             <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: "block", marginBottom: 4 }}>GitHub Personal Access Token (PAT)</label>
             <input
               type="password"
               value={syncPat}
-              onChange={e => setSyncPat(e.target.value)}
+              onChange={e => { setSyncPat(e.target.value); savePat(e.target.value); }}
               placeholder="ghp_xxxxxxxxxxxxxxxxxx"
-              style={{ width: "100%", background: isDark ? "#0a0f1a" : "#f8fafc", border: `1px solid ${C.line}`, color: C.text, borderRadius: 8, padding: "8px 12px", fontSize: 12, marginBottom: 12, boxSizing: "border-box" }}
+              style={{ width: "100%", background: isDark ? "#0a0f1a" : "#f8fafc", border: `1px solid ${C.line}`, color: C.text, borderRadius: 8, padding: "10px 14px", fontSize: 13, marginBottom: 16, boxSizing: "border-box" }}
             />
 
             <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: "block", marginBottom: 4 }}>Gist ID（初回は空欄のまま）</label>
             <input
               type="text"
               value={syncGistId}
-              onChange={e => setSyncGistId(e.target.value)}
+              onChange={e => { setSyncGistId(e.target.value); saveGistId(e.target.value); }}
               placeholder="初回は自動作成されます"
-              style={{ width: "100%", background: isDark ? "#0a0f1a" : "#f8fafc", border: `1px solid ${C.line}`, color: C.text, borderRadius: 8, padding: "8px 12px", fontSize: 12, marginBottom: 16, boxSizing: "border-box" }}
+              style={{ width: "100%", background: isDark ? "#0a0f1a" : "#f8fafc", border: `1px solid ${C.line}`, color: C.text, borderRadius: 8, padding: "10px 14px", fontSize: 13, marginBottom: 20, boxSizing: "border-box" }}
             />
 
             {syncStatus && (
               <div style={{
-                padding: "10px 14px", borderRadius: 10, marginBottom: 16, fontSize: 12, fontWeight: 500,
+                padding: "12px 16px", borderRadius: 10, marginBottom: 20, fontSize: 13, fontWeight: 500,
                 background: syncStatus.status === "ok" ? (isDark ? "#0d2a1a" : "#d1fae5") : syncStatus.status === "no_pat" ? (isDark ? "#2a1a0d" : "#fef3c7") : (isDark ? "#2a0d0d" : "#fee2e2"),
                 color: syncStatus.status === "ok" ? "#059669" : syncStatus.status === "no_pat" ? "#d97706" : "#dc2626",
                 border: `1px solid ${syncStatus.status === "ok" ? "#a7f3d0" : syncStatus.status === "no_pat" ? "#fde68a" : "#fecaca"}`
               }}>
                 {syncStatus.status === "ok" ? "✓ " : "✗ "}{syncStatus.message}
-                {syncStatus.direction === "download" && " — ページをリロードすると最新データが表示されます"}
+                {syncStatus.direction === "download" && " — 最新データが反映されました"}
               </div>
             )}
 
-            <div style={{ fontSize: 10, color: C.muted, marginBottom: 16, lineHeight: 1.6 }}>
-              ※ PATはセッション中のみメモリに保持（Gist ID はlocalStorageに保存）。<br/>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
+              ※ PATとGist IDはブラウザ（localStorage）に安全に保存されます。<br/>
               ※ 「gist」スコープのみ付与されたPATを使用してください。<br/>
               ※ 同期対象：手入力現金・除外設定・積立設定データ
             </div>
 
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => { setSyncOpen(false); setSyncStatus(null); }} style={{ background: "none", border: `1px solid ${C.line}`, color: C.muted, borderRadius: 10, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>閉じる</button>
-              <button
-                onClick={handleSync}
-                disabled={syncLoading}
-                style={{ background: syncLoading ? C.muted : C.acc, border: "none", color: "#fff", borderRadius: 10, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: syncLoading ? "not-allowed" : "pointer" }}
-              >
-                {syncLoading ? "同期中…" : "同期実行"}
-              </button>
-            </div>
+            <button
+              onClick={handleSync}
+              disabled={syncLoading}
+              style={{ width: "100%", background: syncLoading ? C.muted : C.acc, border: "none", color: "#fff", borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 700, cursor: syncLoading ? "not-allowed" : "pointer" }}
+            >
+              {syncLoading ? "同期中…" : "手動で同期を実行"}
+            </button>
           </div>
         </div>
       )}
+
+      {/* ── フッター ── */}
+      <div style={{ marginTop: 24, fontSize: 11, color: C.muted, textAlign: "center", borderTop: `1px solid ${C.line}`, paddingTop: 16, paddingBottom: 32 }}>
+        資産管理App {APP_VERSION} ｜ {DATA_DATE}
+      </div>
     </div>
   );
 }

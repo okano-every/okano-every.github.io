@@ -20,19 +20,19 @@ const SYNC_KEYS = [
 
 const GIST_FILE_NAME = "okano_sync.json";
 const GIST_ID_KEY    = "okano-gist-id";
-const GIST_PAT_KEY   = "okano-gist-pat-session"; // セッション中のみ保持（sessionStorage）
+const GIST_PAT_KEY   = "okano-gist-pat-session"; // TODO: Key name kept for compatibility, but now uses localStorage
 
 // ─────────────────────────────────────────
-// PAT の保存・取得（sessionStorageのみ）
+// PAT の保存・取得（localStorage）
 // ─────────────────────────────────────────
 export function savePat(pat) {
-  sessionStorage.setItem(GIST_PAT_KEY, pat);
+  localStorage.setItem(GIST_PAT_KEY, pat);
 }
 export function loadPat() {
-  return sessionStorage.getItem(GIST_PAT_KEY) || "";
+  return localStorage.getItem(GIST_PAT_KEY) || "";
 }
 export function clearPat() {
-  sessionStorage.removeItem(GIST_PAT_KEY);
+  localStorage.removeItem(GIST_PAT_KEY);
 }
 
 export function saveGistId(id) {
@@ -46,7 +46,8 @@ export function loadGistId() {
 // ローカルスナップショット作成
 // ─────────────────────────────────────────
 function buildLocalSnapshot() {
-  const payload = { _ts: Date.now() };
+  const tsStr = localStorage.getItem("okano-sync-ts");
+  const payload = { _ts: tsStr ? Number(tsStr) : 0 };
   SYNC_KEYS.forEach((k) => {
     try {
       const raw = localStorage.getItem(k);

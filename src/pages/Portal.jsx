@@ -76,11 +76,11 @@ const Icons = {
 };
 
 const APPS = [
-  { id: "dashboard", icon: "dashboard", name: "資産ダッシュボード", desc: "家族全員の資産を一元管理。推移グラフ・目標進捗", path: "/dashboard", colorKey: "acc", ready: true },
-  { id: "fx", icon: "fx", name: "FXトラッカー", desc: "HFM / Exness / XM 取引履歴・損益・残高推移（2023-06〜）", path: "/fx", colorKey: "green", ready: true },
-  { id: "savings", icon: "savings", name: "積立設定管理", desc: "資産ダッシュボード ▶ 証券銘柄タブ内に統合済み（v3.3〜）", path: "/dashboard", colorKey: "teal", ready: true },
-  { id: "changelog", icon: "report", name: "更新履歴", desc: "アプリのバージョン履歴と変更点を確認", path: "/changelog", colorKey: "pink", ready: true },
-  { id: "crypto", icon: "crypto", name: "暗号資産", desc: "保有コイン・評価額の管理", path: "/crypto", colorKey: "amber", ready: false },
+  { id: "dashboard", icon: "dashboard", name: "資産ダッシュボード", desc: "世帯全体の資産推移を管理。目標グラフ・指標一覧", path: "/dashboard", colorKey: "acc", ready: true },
+  { id: "fx", icon: "fx", name: "FXトラッカー", desc: "HFM / Exness / XM の入出金・利益推移（2023-06〜）", path: "/fx", colorKey: "green", ready: true },
+  { id: "savings", icon: "savings", name: "積立設定管理", desc: "資産ダッシュボードへ統合済み", path: "", colorKey: "teal", ready: false },
+  { id: "changelog", icon: "report", name: "更新履歴", desc: "アプリのバージョンと変更点をかくにん", path: "/changelog", colorKey: "pink", ready: true },
+  { id: "crypto", icon: "crypto", name: "暗号資産", desc: "保有コイン・入出金の管理", path: "/crypto", colorKey: "amber", ready: false },
   { id: "education", icon: "education", name: "教育費カレンダー", desc: "子供3人の進学タイムライン・費用計画", path: "/education", colorKey: "purple", ready: false },
   { id: "networth", icon: "networth", name: "純資産サマリー", desc: "不動産・退職金を含む総資産見通し", path: "/networth", colorKey: "teal", ready: false },
   { id: "report", icon: "report", name: "月次レポート", desc: "月末自動生成レポート・AI分析", path: "/report", colorKey: "pink", ready: false },
