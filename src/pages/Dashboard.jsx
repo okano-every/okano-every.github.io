@@ -392,9 +392,9 @@ function JaAddForm({ onAdd, onCancel }) {
 // ================================================================
 // 各種定義
 // ================================================================
-const TABS   = ["summary","trend","pnl","securities","banks","insurance","missing"];
+const TABS   = ["summary","pnl","securities","banks","insurance","missing"];
 const TAB_LB = {
-  summary:"📊 サマリー", trend:"📉 資産推移", pnl:"💹 投資収益", securities:"📈 証券銘柄",
+  summary:"📊 サマリー", pnl:"💹 投資損益", securities:"📈 証券銘柄",
   banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金", missing:"⚠️ 未連携",
 };
 
@@ -414,6 +414,12 @@ export default function Dashboard() {
   const [assetsError,  setAssetsError]  = useState(false);
   const [historyRows,  setHistoryRows]  = useState([]);
   const [historyError, setHistoryError] = useState(false);
+  const [detailHistoryRows, setDetailHistoryRows] = useState([]);
+  const [detailHistoryError, setDetailHistoryError] = useState(false);
+  const [trendRange, setTrendRange] = useState("month"); // "year" | "month" | "day"
+  const [bankExclusions, setBankExclusions] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("okano-bank-exclusions-v1")) || {}; } catch { return {}; }
+  });
   const [manualCash, setManualCash] = useState([]);
   const [manualFormOpen, setManualFormOpen] = useState(null); // 'JPY' | 'USD' | 'THB' | null
   const [sortState, setSortState] = useState({}); // { tableId: { key, dir } }
@@ -512,6 +518,11 @@ export default function Dashboard() {
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(rows => setHistoryRows(Array.isArray(rows) ? rows : []))
       .catch(() => setHistoryError(true));
+      
+    fetch("/data/asset_history_detail.json")
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(rows => setDetailHistoryRows(Array.isArray(rows) ? rows : []))
+      .catch(() => setDetailHistoryError(true));
   }, []);
 
   const jaActive = jaList.filter(c => !c.archived);
@@ -520,7 +531,12 @@ export default function Dashboard() {
   const jaCost   = jaCalc.reduce((s, c) => s + c.cost,  0);
   const jaPnl    = jaCalc.reduce((s, c) => s + c.pnl,   0);
 
-  const GRAND_TOTAL = MT_TOTAL + MF_UNIQUE + SONY_TOTAL + IDECO_ADJ + jaTotal;
+  const excludedJpySum = BANK_ITEMS.filter(it => bankExclusions[it.name]).reduce((s, i) => s + i.amount, 0);
+  const excludedUsdJpySum = USD_ITEMS.filter(it => bankExclusions[it.name]).reduce((s, i) => s + Math.round(i.usd * (usdJpy || 0)), 0);
+  const GRAND_TOTAL = MT_TOTAL + MF_UNIQUE + SONY_TOTAL + IDECO_ADJ + jaTotal - excludedJpySum - excludedUsdJpySum;
+  const EFFECTIVE_BANK_TOTAL = BANK_TOTAL - excludedJpySum;
+  const EFFECTIVE_USD_SUM = USD_SUM - USD_ITEMS.filter(it => bankExclusions[it.name]).reduce((s, i) => s + i.usd, 0);
+  const EFFECTIVE_USD_JPY_SUM = usdJpy ? Math.round(EFFECTIVE_USD_SUM * usdJpy) : 0;
 
   const pnlRows = [
     { label:"証券（SBI/日興）", cost:RF_COST,   value:RF_TOTAL,   color:C.acc },
@@ -532,14 +548,13 @@ export default function Dashboard() {
   const invValue = pnlRows.reduce((s, r) => s + r.value, 0);
   const invPnl   = invValue - invCost;
 
-  const pieMisc = Math.max(0, GRAND_TOTAL - BANK_TOTAL - RF_TOTAL - IDECO_TOTAL - SONY_TOTAL - jaTotal);
-  const usdJpySum = usdJpy ? Math.round(USD_SUM * usdJpy) : 0;
-  const pieBonds  = Math.max(0, pieMisc - usdJpySum); // 「他」を含まず、外貨を差し引いた残差を「債券」として表示（主に国内債券・証券口座内現金）
+  const pieMisc = Math.max(0, GRAND_TOTAL - EFFECTIVE_BANK_TOTAL - RF_TOTAL - IDECO_TOTAL - SONY_TOTAL - jaTotal);
+  const pieBonds  = Math.max(0, pieMisc - EFFECTIVE_USD_JPY_SUM); // 「他」を含まず、外貨を差し引いた残差を「債券」として表示（主に国内債券・証券口座内現金）
   const pieData = [
-    { name:"現金・預金（円）",  value:BANK_TOTAL,  color:"#0284c7" },
+    { name:"現金・預金（円）",  value:EFFECTIVE_BANK_TOTAL,  color:"#0284c7" },
     { name:"証券（投信/株）",  value:RF_TOTAL,    color:"#0052cc" },
     { name:"債券",                value:pieBonds,    color:"#6366f1" },
-    { name:"外貨",                value:usdJpySum,   color:"#f59e0b" },
+    { name:"外貨",                value:EFFECTIVE_USD_JPY_SUM,   color:"#f59e0b" },
     { name:"iDeCo",           value:IDECO_TOTAL, color:C.purple },
     { name:"ソニー生命",       value:SONY_TOTAL,  color:"#f97316" },
     { name:"JA共済",           value:jaTotal,     color:"#10b981" },
@@ -581,6 +596,53 @@ export default function Dashboard() {
       {children}
     </th>
   );
+
+  const getFilteredTrend = (data, range) => {
+    if (!data || data.length === 0) return [];
+    const latestDate = new Date(data[data.length - 1].date);
+    let cutoff = new Date(latestDate);
+    if (range === "day") {
+      cutoff.setFullYear(cutoff.getFullYear() - 1);
+    } else if (range === "month") {
+      cutoff.setFullYear(cutoff.getFullYear() - 3);
+    } else {
+      cutoff = new Date(0);
+    }
+    let filtered = data.filter(d => new Date(d.date) >= cutoff);
+    if (range === "month" || range === "year") {
+      const byMonth = new Map();
+      filtered.forEach(d => {
+        const ym = d.date.substring(0, 7);
+        byMonth.set(ym, d);
+      });
+      filtered = Array.from(byMonth.values());
+    }
+    return filtered;
+  };
+
+  const filteredTrendData = getFilteredTrend(trendData, trendRange);
+  const filteredDetailData = getFilteredTrend(detailHistoryRows, trendRange);
+
+  // 詳細データの再構成（銘柄・口座ごとの推移を簡単に描画できるように）
+  // 形式: [ { date: "YYYY-MM-DD", "eMAXIS Slim...": 100000, "SBI証券...": 50000 }, ... ]
+  const detailChartData = filteredDetailData.map(d => {
+    const row = { date: d.date };
+    if (d.securities) d.securities.forEach(s => row[`[証券] ${s.name} (${s.owner})`] = s.amount);
+    if (d.ideco)      d.ideco.forEach(s => row[`[iDeCo] ${s.name}`] = s.amount);
+    if (d.bank)       d.bank.forEach(s => row[`[銀行] ${s.name}`] = s.amount);
+    if (d.sony)       d.sony.forEach(s => row[`[保険] ${s.name}`] = s.amount);
+    return row;
+  });
+
+  const getLineKeys = (prefix) => {
+    const keys = new Set();
+    detailChartData.forEach(d => {
+      Object.keys(d).forEach(k => {
+        if (k.startsWith(prefix)) keys.add(k);
+      });
+    });
+    return Array.from(keys);
+  };
 
   if (!assetsLoaded) {
     return (
@@ -637,17 +699,27 @@ export default function Dashboard() {
 
       {/* ── ヘッダー ── */}
       <div style={{ background: C.card, borderRadius: 16, padding: "20px", marginBottom: 16, border: `1px solid ${C.line}`, boxShadow: isDark ? "0 4px 6px -1px rgba(0,0,0,0.5)" : "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
-        <button onClick={() => window.history.back()}
-          style={{ background: "none", border: "none", color: C.acc, fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0, display: "flex", alignItems: "center", gap: 4 }}>
-          ← ポータルへ
-        </button>
-        <div>
-          <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.05em" }}>岡野ファミリー 総合資産</div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: isDark ? "#ffffff" : C.text, marginTop: 4, letterSpacing: "-0.02em" }}>
-            {fmt(GRAND_TOTAL)}
-          </div>
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
-            {DATA_DATE} ｜ 負債ネット済 ｜ JA共済計算値含む
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+          <button
+            onClick={() => window.history.back()}
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "6px 12px", borderRadius: 8, flexShrink: 0,
+              border: `1px solid ${C.line}`, background: C.bg,
+              fontSize: 12, color: C.muted, cursor: "pointer",
+              fontWeight: 600, transition: "all 0.2s", marginTop: 2
+            }}
+          >
+            ← ポータルへ
+          </button>
+          <div>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.05em" }}>岡野ファミリー 総合資産</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: isDark ? "#ffffff" : C.text, marginTop: 4, letterSpacing: "-0.02em" }}>
+              {fmt(GRAND_TOTAL)}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
+              {DATA_DATE} ｜ 負債ネット済 ｜ JA共済計算値含む
+            </div>
           </div>
         </div>
 
@@ -748,6 +820,156 @@ export default function Dashboard() {
               ※ 債券 = 国内債券＋証券口座内現金等（MT集計から逆算）　※ 外貨 = 米ドル建資産（ライブレート換算）
             </div>
           </div>
+
+          {/* ── 資産推移（サマリー下部） ── */}
+          <div style={{ marginTop: 32, paddingTop: 24, borderTop: `2px dashed ${C.line}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>📉 資産推移</div>
+              <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
+                <button onClick={() => setTrendRange("year")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: trendRange==="year" ? C.acc : "transparent", color: trendRange==="year" ? "#fff" : C.muted, fontWeight: 600 }}>年次(全て)</button>
+                <button onClick={() => setTrendRange("month")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: trendRange==="month" ? C.acc : "transparent", color: trendRange==="month" ? "#fff" : C.muted, fontWeight: 600 }}>月次(3年)</button>
+                <button onClick={() => setTrendRange("day")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: trendRange==="day" ? C.acc : "transparent", color: trendRange==="day" ? "#fff" : C.muted, fontWeight: 600 }}>日次(12月)</button>
+              </div>
+            </div>
+            
+            {historyError && (
+              <div style={{ background: isDark ? "#3f1d1d" : "#fef2f2", border: `1px solid ${isDark ? "#7f1d1d" : "#fecaca"}`, color: isDark ? "#fca5a5" : "#b91c1c", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 12, fontWeight: 600 }}>
+                ⚠️ 資産推移データの取得に失敗しました。
+              </div>
+            )}
+
+            {filteredTrendData.length === 0 ? (
+              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "24px", textAlign: "center", color: C.muted, fontSize: 13 }}>
+                推移データがありません。
+              </div>
+            ) : (
+              <>
+                {/* — 一番上：総合資産の推移 — */}
+                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 20, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>📊 総合資産の推移</div>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={filteredTrendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} tickFormatter={fmtDate} />
+                      <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+                      <Tooltip formatter={(v) => fmt(v)} labelFormatter={fmtDate} />
+                      <Line type="monotone" dataKey="grand" name="総資産" stroke={C.acc} strokeWidth={2.5} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* — 分類別：有価資産 — */}
+                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>📈 有価資産</div>
+                    <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
+                      <button onClick={() => setSecViewMode("trend")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: secViewMode==="trend" ? C.acc : "transparent", color: secViewMode==="trend" ? "#fff" : C.muted, fontWeight: 600 }}>合計推移</button>
+                      <button onClick={() => setSecViewMode("detail")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: secViewMode==="detail" ? C.acc : "transparent", color: secViewMode==="detail" ? "#fff" : C.muted, fontWeight: 600 }}>銘柄別推移</button>
+                      <button onClick={() => setSecViewMode("breakdown")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: secViewMode==="breakdown" ? C.acc : "transparent", color: secViewMode==="breakdown" ? "#fff" : C.muted, fontWeight: 600 }}>銘柄別内訳</button>
+                    </div>
+                  </div>
+                  {secViewMode === "trend" ? (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart data={filteredTrendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+                        <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+                        <Tooltip formatter={(v) => fmt(v)} />
+                        <Line type="monotone" dataKey="securities" name="有価資産" stroke="#0052cc" strokeWidth={2.5} dot={{ r: 3 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : secViewMode === "detail" ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={detailChartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+                        <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+                        <Tooltip formatter={(v) => fmt(v)} />
+                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                        {getLineKeys("[証券]").map((k, i) => <Line key={k} type="monotone" dataKey={k} name={k.replace("[証券] ", "")} stroke={["#0052cc", "#0284c7", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#f43f5e", "#14b8a6"][i%8]} strokeWidth={1.5} dot={{ r: 1 }} />)}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div>
+                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>※ 現時点（{DATA_DATE}）の内訳</div>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr>
+                            <SortTh label="銘柄" sortKey="name" tableId="trend_breakdown" getSort={getSort} onSort={onSort} />
+                            <SortTh label="名義" sortKey="owner" tableId="trend_breakdown" getSort={getSort} onSort={onSort} />
+                            <SortTh label="評価額" sortKey="amount" tableId="trend_breakdown" getSort={getSort} onSort={onSort} right />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(getSort("trend_breakdown").key ? applySort(RF_ITEMS, "trend_breakdown") : [...RF_ITEMS].sort((a, b) => b.amount - a.amount)).map((it, i) => (
+                            <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
+                              <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.name}</td>
+                              <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{it.owner}</td>
+                              <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* — 分類別：iDeCo — */}
+                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>🛡 iDeCo</div>
+                  {trendHasIdeco ? (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <LineChart data={detailChartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+                        <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+                        <Tooltip formatter={(v) => fmt(v)} />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                        {getLineKeys("[iDeCo]").map((k, i) => <Line key={k} type="monotone" dataKey={k} name={k.replace("[iDeCo] ", "")} stroke={["#8b5cf6", "#a855f7", "#d946ef", "#ec4899"][i%4]} strokeWidth={2} dot={{ r: 2 }} />)}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ fontSize: 12, color: C.muted, textAlign: "center", padding: "20px 0" }}>iDeCoデータなし</div>
+                  )}
+                </div>
+
+                {/* — 分類別：現金 — */}
+                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>🏦 現金</div>
+                  {trendHasBank ? (
+                    <ResponsiveContainer width="100%" height={240}>
+                      <LineChart data={detailChartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+                        <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+                        <Tooltip formatter={(v) => fmt(v)} />
+                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                        {getLineKeys("[銀行]").map((k, i) => <Line key={k} type="monotone" dataKey={k} name={k.replace("[銀行] ", "")} stroke={["#0284c7", "#0ea5e9", "#38bdf8", "#0369a1"][i%4]} strokeWidth={2} dot={{ r: 2 }} />)}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ fontSize: 12, color: C.muted, textAlign: "center", padding: "20px 0" }}>現金データなし</div>
+                  )}
+                </div>
+
+                {/* — 分類別：保険年金 — */}
+                <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>💰 保険年金（ソニー生命＋JA共済）</div>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={filteredTrendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
+                      <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
+                      <Tooltip formatter={(v) => fmt(v)} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Line type="monotone" dataKey="insurance" name="保険年金合計" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="sony" name="ソニー生命のみ" stroke="#f97316" strokeWidth={1.5} dot={{ r: 2 }} strokeDasharray="4 3" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -812,7 +1034,7 @@ export default function Dashboard() {
                   <tr style={{ borderTop: `2px solid ${C.text}`, fontWeight: 700, background: isDark ? "#0f2e1b" : "#f0fdf4" }}>
                     <td style={{ padding: "12px 8px", fontSize: 13, color: C.text }}>総資産合計</td>
                     <td style={{ padding: "12px 8px", fontSize: 13, textAlign: "right", color: C.muted }}>─</td>
-                    <td style={{ padding: "12px 8px", fontSize: 13, textAlign: "right", color: C.green, fontFamily: "monospace", fontSize: 14 }}>{fmt(GRAND_TOTAL)}</td>
+                    <td style={{ padding: "12px 8px", fontSize: 14, textAlign: "right", color: C.green, fontFamily: "monospace" }}>{fmt(GRAND_TOTAL)}</td>
                     <td colSpan={2} style={{ padding: "12px 8px", fontSize: 12, textAlign: "right", color: C.muted, fontWeight: 600 }}>
                       最終更新データ基準
                     </td>
@@ -866,9 +1088,14 @@ export default function Dashboard() {
       {/* ══════════════════════════════════ */}
       {tab === "securities" && (
         <div>
-          <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, background: C.card, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.line}`, fontWeight: 500 }}>
-            Robofolio（SBI本人/妻 + 日興子供3名）｜ 合計 {fmt(RF_TOTAL)} 含み益
-            <span style={{ color: C.green, fontWeight: 700 }}> +{fmt(RF_PNL)}</span>
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 16, background: C.card, padding: "16px 20px", borderRadius: 12, border: `1px solid ${C.line}`, fontWeight: 500, display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 24, fontWeight: 800, color: C.text, fontFamily: "monospace" }}>{fmt(RF_TOTAL)}</div>
+            <div style={{ fontSize: 13, color: C.muted }}>
+              含み損益: <span style={{ color: pnlClr(RF_PNL), fontWeight: 700 }}>{sgn(RF_PNL)}{fmt(Math.abs(RF_PNL))}</span>
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
+              抽出先：Robofolio
+            </div>
           </div>
           {["本人","妻","長女","次女","長男"].map(owner => {
             const rawItems = RF_ITEMS.filter(i => i.owner === owner);
@@ -901,7 +1128,7 @@ export default function Dashboard() {
                     <tbody>
                       {items.map((it, i) => (
                         <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
-                          <td style={{ padding: "10px 8px", color: C.text, fontWeight: 600, whiteSpace: "nowrap" }}>{it.name}</td>
+                          <td style={{ padding: "10px 8px", color: C.text, fontWeight: 600, whiteSpace: "normal", wordBreak: "break-all", minWidth: 100 }}>{it.name}</td>
                           <td style={{ padding: "10px 8px", color: C.muted, fontSize: 11, whiteSpace: "nowrap" }}>{it.sub}</td>
                           <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace", whiteSpace: "nowrap" }}>
                             {typeof it.costPrice === "number" ? it.costPrice.toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : it.costPrice}
@@ -938,19 +1165,27 @@ export default function Dashboard() {
           [...BANK_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualJpy.map(e => ({ name: e.name, amount: e.amount, lastUpdate: e.date, src: "MANUAL" }))],
           "bank_jpy", ["lastUpdate"]
         );
-        const jpyTotal = jpyRows.reduce((s, r) => s + Number(r.amount || 0), 0);
+        const jpyTotal = jpyRows.filter(r => !bankExclusions[r.name]).reduce((s, r) => s + Number(r.amount || 0), 0);
 
         const usdRows = applySort(
           [...USD_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualUsd.map(e => ({ name: e.name, usd: e.amount, lastUpdate: e.date, src: "MANUAL" }))],
           "bank_usd", ["lastUpdate"]
         );
-        const usdRowsTotal = usdRows.reduce((s, r) => s + Number(r.usd || 0), 0);
+        const usdRowsTotal = usdRows.filter(r => !bankExclusions[r.name]).reduce((s, r) => s + Number(r.usd || 0), 0);
 
         const thbRows = applySort(
           manualThb.map(e => ({ name: e.name, thb: e.amount, lastUpdate: e.date, src: "MANUAL" })),
           "bank_thb", ["lastUpdate"]
         );
-        const thbRowsTotal = thbRows.reduce((s, r) => s + Number(r.thb || 0), 0);
+        const thbRowsTotal = thbRows.filter(r => !bankExclusions[r.name]).reduce((s, r) => s + Number(r.thb || 0), 0);
+
+        const toggleExclusion = (name) => {
+          setBankExclusions(prev => {
+            const next = { ...prev, [name]: !prev[name] };
+            localStorage.setItem("okano-bank-exclusions-v1", JSON.stringify(next));
+            return next;
+          });
+        };
 
         return (
         <div>
@@ -965,34 +1200,45 @@ export default function Dashboard() {
             {manualFormOpen === "JPY" && (
               <ManualCashForm currency="JPY" unitLabel="残高（円）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
             )}
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
-              <thead>
-                <tr>
-                  <SortTh label="名称・口座名" sortKey="name" tableId="bank_jpy" getSort={getSort} onSort={onSort} />
-                  <SortTh label="JPY残高" sortKey="amount" tableId="bank_jpy" getSort={getSort} onSort={onSort} right />
-                  <SortTh label="最終更新日" sortKey="lastUpdate" tableId="bank_jpy" getSort={getSort} onSort={onSort} isDate />
-                  <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>取得元</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jpyRows.map((it, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
-                    <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
-                      {it.name}
-                      {it.src === "MANUAL" && <ManualHistoryRow name={it.name} currency="JPY" entries={manualCash} unitFmt={fmt} onDelete={deleteManualCash} />}
-                    </td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
-                    <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
-                    <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
+                <thead>
+                  <tr>
+                    <SortTh label="名称・口座名" sortKey="name" tableId="bank_jpy" getSort={getSort} onSort={onSort} />
+                    <SortTh label="JPY残高" sortKey="amount" tableId="bank_jpy" getSort={getSort} onSort={onSort} right />
+                    <SortTh label="最終更新日" sortKey="lastUpdate" tableId="bank_jpy" getSort={getSort} onSort={onSort} isDate />
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}` }}>取得元</th>
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "center" }}>除外</th>
                   </tr>
-                ))}
-                <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
-                  <td style={{ padding: "10px 8px" }}>合計</td>
-                  <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace" }}>{fmt(jpyTotal)}</td>
-                  <td colSpan={2}></td>
-                </tr>
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {jpyRows.map((it, i) => {
+                    const isEx = bankExclusions[it.name];
+                    return (
+                    <tr key={i} style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
+                      <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
+                        {it.name}
+                        {it.src === "MANUAL" && <ManualHistoryRow name={it.name} currency="JPY" entries={manualCash} unitFmt={fmt} onDelete={deleteManualCash} />}
+                      </td>
+                      <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
+                      <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
+                      <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
+                      <td style={{ padding: "8px", textAlign: "center" }}>
+                        <button onClick={() => toggleExclusion(it.name)} style={{ background: isEx ? C.acc : "transparent", border: `1px solid ${C.acc}`, color: isEx ? "#fff" : C.acc, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>
+                          {isEx ? "除外中" : "除外"}
+                        </button>
+                      </td>
+                    </tr>
+                    );
+                  })}
+                  <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
+                    <td style={{ padding: "10px 8px" }}>合計</td>
+                    <td style={{ padding: "10px 8px", textAlign: "right", fontFamily: "monospace" }}>{fmt(jpyTotal)}</td>
+                    <td colSpan={3}></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* ── 米ドル資産 ── */}
@@ -1124,35 +1370,6 @@ export default function Dashboard() {
       {tab === "insurance" && (
         <div>
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-            <SecHead title="ソニー生命（解約返戻金）" total={SONY_TOTAL} cost={SONY_COST} pnl={SONY_PNL}/>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr>
-                  <SortTh label="契約" sortKey="name" tableId="sony" getSort={getSort} onSort={onSort} />
-                  <SortTh label="証券番号" sortKey="certNo" tableId="sony" getSort={getSort} onSort={onSort} />
-                  <SortTh label="解約返戻金" sortKey="amount" tableId="sony" getSort={getSort} onSort={onSort} right />
-                  <SortTh label="払込保険料" sortKey="cost" tableId="sony" getSort={getSort} onSort={onSort} right />
-                  <Th right>損益</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {applySort(SONY_ITEMS, "sony").map(it => {
-                  const gain = it.amount - it.cost;
-                  return (
-                    <tr key={it.id} style={{ borderBottom: `1px solid ${C.line}` }}>
-                      <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.name} <Tag src="SL"/></td>
-                      <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{it.certNo}</td>
-                      <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
-                      <td style={{ padding: "8px", textAlign: "right", color: C.muted, fontFamily: "monospace" }}>{fmt(it.cost)}</td>
-                      <td style={{ padding: "8px", textAlign: "right", color: pnlClr(gain), fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>{sgn(gain)}{fmt(gain)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
             <SecHead title="iDeCo（SBI確定拠出年金）" total={IDECO_TOTAL} cost={IDECO_COST} pnl={IDECO_PNL}/>
             {MF_IDECO_LAST_UPDATE && (
               <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>最終取得日: {fmtDate(MF_IDECO_LAST_UPDATE)}</div>
@@ -1190,6 +1407,39 @@ export default function Dashboard() {
               </table>
             </div>
           </div>
+
+          <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+            <SecHead title="ソニー生命（解約返戻金）" total={SONY_TOTAL} cost={SONY_COST} pnl={SONY_PNL}/>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    <SortTh label="契約" sortKey="name" tableId="sony" getSort={getSort} onSort={onSort} />
+                    <SortTh label="証券番号" sortKey="certNo" tableId="sony" getSort={getSort} onSort={onSort} />
+                    <SortTh label="解約返戻金" sortKey="amount" tableId="sony" getSort={getSort} onSort={onSort} right />
+                    <SortTh label="払込保険料" sortKey="cost" tableId="sony" getSort={getSort} onSort={onSort} right />
+                    <Th right>損益</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {applySort(SONY_ITEMS, "sony").map(it => {
+                    const gain = it.amount - it.cost;
+                    return (
+                      <tr key={it.id} style={{ borderBottom: `1px solid ${C.line}` }}>
+                        <td style={{ padding: "8px", color: C.text, fontWeight: 500, whiteSpace: "nowrap" }}>{it.name} <Tag src="SL"/></td>
+                        <td style={{ padding: "8px", color: C.muted, fontSize: 11, whiteSpace: "nowrap" }}>{it.certNo}</td>
+                        <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600, whiteSpace: "nowrap" }}>{fmt(it.amount)}</td>
+                        <td style={{ padding: "8px", textAlign: "right", color: C.muted, fontFamily: "monospace", whiteSpace: "nowrap" }}>{fmt(it.cost)}</td>
+                        <td style={{ padding: "8px", textAlign: "right", color: pnlClr(gain), fontSize: 12, fontWeight: 700, fontFamily: "monospace", whiteSpace: "nowrap" }}>{sgn(gain)}{fmt(gain)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+
 
           {/* JA共済 */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "20px 0 12px", borderLeft: `4px solid #10b981`, paddingLeft: 12 }}>
@@ -1281,140 +1531,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── TAB: 資産推移 ── */}
-      {tab === "trend" && (
-        <div>
-          {historyError && (
-            <div style={{ background: isDark ? "#3f1d1d" : "#fef2f2", border: `1px solid ${isDark ? "#7f1d1d" : "#fecaca"}`, color: isDark ? "#fca5a5" : "#b91c1c", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 12, fontWeight: 600 }}>
-              ⚠️ 資産推移データ（asset_history.json）の取得に失敗しました。
-            </div>
-          )}
 
-          {trendData.length === 0 ? (
-            <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "24px", textAlign: "center", color: C.muted, fontSize: 13 }}>
-              推移データがまだありません。run_all.bat の実行が積み重なると、ここにグラフが表示されます。
-            </div>
-          ) : (
-            <>
-              {/* — 一番上：総合資産の推移 — */}
-              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 20, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>📊 総合資産の推移</div>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>※ サマリータブの総合資産と同一の計算式です（JA共済は契約条件から遷及計算）</div>
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} tickFormatter={fmtDate} />
-                    <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
-                    <Tooltip formatter={(v) => fmt(v)} labelFormatter={fmtDate} />
-                    <Line type="monotone" dataKey="grand" name="総資産" stroke={C.acc} strokeWidth={2.5} dot={{ r: 3 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* — 分類別：有価資産（推移 / 銘柄別切り替え） — */}
-              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700 }}>📈 有価資産（元本保証されないもの）</div>
-                  <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
-                    <button onClick={() => setSecViewMode("trend")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: secViewMode==="trend" ? C.acc : "transparent", color: secViewMode==="trend" ? "#fff" : C.muted, fontWeight: 600 }}>推移</button>
-                    <button onClick={() => setSecViewMode("breakdown")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: secViewMode==="breakdown" ? C.acc : "transparent", color: secViewMode==="breakdown" ? "#fff" : C.muted, fontWeight: 600 }}>銘柄別内訳</button>
-                  </div>
-                </div>
-                {secViewMode === "trend" ? (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
-                      <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
-                      <Tooltip formatter={(v) => fmt(v)} />
-                      <Line type="monotone" dataKey="securities" name="有価資産" stroke="#0052cc" strokeWidth={2.5} dot={{ r: 3 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div>
-                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>※ 現時点（{DATA_DATE}）の銘柄別内訳です。過去推移は未収集のため表示できません。</div>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                      <thead>
-                        <tr>
-                          <SortTh label="銘柄" sortKey="name" tableId="trend_breakdown" getSort={getSort} onSort={onSort} />
-                          <SortTh label="名義" sortKey="owner" tableId="trend_breakdown" getSort={getSort} onSort={onSort} />
-                          <SortTh label="評価額" sortKey="amount" tableId="trend_breakdown" getSort={getSort} onSort={onSort} right />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(getSort("trend_breakdown").key ? applySort(RF_ITEMS, "trend_breakdown") : [...RF_ITEMS].sort((a, b) => b.amount - a.amount)).map((it, i) => (
-                          <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
-                            <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.name}</td>
-                            <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{it.owner}</td>
-                            <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* — 分類別：iDeCo — */}
-              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>🛡 iDeCo</div>
-                {trendHasIdeco ? (
-                  <ResponsiveContainer width="100%" height={180}>
-                    <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
-                      <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
-                      <Tooltip formatter={(v) => fmt(v)} />
-                      <Line type="monotone" dataKey="ideco" name="iDeCo" stroke={C.purple} strokeWidth={2.5} dot={{ r: 3 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div style={{ fontSize: 12, color: C.muted, textAlign: "center", padding: "20px 0" }}>iDeCoの推移データは今後の記録から表示されます</div>
-                )}
-              </div>
-
-              {/* — 分類別：現金 — */}
-              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>🏦 現金</div>
-                {trendHasBank ? (
-                  <ResponsiveContainer width="100%" height={180}>
-                    <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
-                      <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
-                      <Tooltip formatter={(v) => fmt(v)} />
-                      <Line type="monotone" dataKey="bank" name="現金" stroke="#0284c7" strokeWidth={2.5} dot={{ r: 3 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div style={{ fontSize: 12, color: C.muted, textAlign: "center", padding: "20px 0" }}>現金合計の推移データは今後の記録から表示されます</div>
-                )}
-              </div>
-
-              {/* — 分類別：保険年金（ソニー生命＋JA共済計算値） — */}
-              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>💰 保険年金（ソニー生命＋JA共済）</div>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>※ JA共済は契約条件から遡及計算（実際の取得値ではありません）</div>
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} />
-                    <YAxis tick={{ fontSize: 10, fill: C.muted }} tickFormatter={(v) => `${Math.round(v / 10000)}万`} width={50} />
-                    <Tooltip formatter={(v) => fmt(v)} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="insurance" name="保険年金合計" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="sony" name="ソニー生命のみ" stroke="#f97316" strokeWidth={1.5} dot={{ r: 2 }} strokeDasharray="4 3" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
-                記録は run_all.bat 実行ごとに自動追記されます（update_history.py → 04_HISTORY/asset_history.csv）。
-              </div>
-            </>
-          )}
-        </div>
-      )}
 
       {/* ── フッター ── */}
       <div style={{ marginTop: 24, fontSize: 11, color: C.muted, textAlign: "center", borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>

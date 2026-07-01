@@ -314,23 +314,31 @@ export default function SavingsPlan() {
       paddingBottom: 60,
     }}>
       {/* ── ヘッダー ── */}
-      <div style={{ background: C.card, padding: "20px 20px 16px", borderBottom: `1px solid ${C.line}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ background: C.card, padding: "16px 20px", borderBottom: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
             onClick={() => { window.location.href = "/"; }}
-            style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", padding: 0 }}
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "6px 12px", borderRadius: 8,
+              border: `1px solid ${C.line}`, background: C.bg,
+              fontSize: 12, color: C.muted, cursor: "pointer",
+              fontWeight: 600, transition: "all 0.2s"
+            }}
           >
-            ← ポータルへ戻る
+            ← ポータルへ
           </button>
-          <button
-            onClick={toggleTheme}
-            style={{ background: isDark ? "#1e2d45" : "#f1f5f9", border: "none", borderRadius: 20, color: C.muted, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-          >
-            {isDark ? "☀️ LIGHT" : "🌙 DARK"}
-          </button>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>💰 積立設定管理</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>SBI証券・日興証券・iDeCo　月次積立の一元管理</div>
+          </div>
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, marginTop: 10 }}>💰 積立設定管理</div>
-        <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>SBI証券・日興証券・iDeCo　月次積立の一元管理</div>
+        <button
+          onClick={toggleTheme}
+          style={{ background: isDark ? "#1e2d45" : "#f1f5f9", border: "none", borderRadius: 20, color: C.muted, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+        >
+          {isDark ? "☀️ LIGHT" : "🌙 DARK"}
+        </button>
       </div>
 
       <div style={{ padding: "20px 20px 0" }}>
