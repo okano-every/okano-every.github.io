@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { CHANGELOG_DATA } from "./Changelog";
 import { syncData, savePat, loadPat, saveGistId, loadGistId, touchLocalTs } from "../syncService";
@@ -92,6 +92,10 @@ let BANK_TOTAL = 0;
 let USD_ITEMS = [];
 let USD_SUM = 0;
 
+// タイバーツ資産
+let THB_ITEMS = [];
+let THB_TOTAL = 0;
+
 // iDeCo
 let IDECO_ITEMS = [];
 let IDECO_TOTAL = 0;
@@ -137,6 +141,9 @@ function applyAssetsData(d) {
 
   USD_ITEMS = Array.isArray(d.usdItems) ? d.usdItems : [];
   USD_SUM   = USD_ITEMS.reduce((s, i) => s + i.usd, 0);
+
+  THB_ITEMS = Array.isArray(d.thbItems) ? d.thbItems : [];
+  THB_TOTAL = THB_ITEMS.reduce((s, i) => s + i.amount, 0);
 
   IDECO_ITEMS = Array.isArray(d.idecoItems) ? d.idecoItems : [];
   IDECO_TOTAL = IDECO_ITEMS.reduce((s, i) => s + i.amount, 0);
@@ -536,6 +543,8 @@ export default function Dashboard() {
   const [detailHistoryRows, setDetailHistoryRows] = useState([]);
   const [detailHistoryError, setDetailHistoryError] = useState(false);
   const [trendRange, setTrendRange] = useState("month"); // "year" | "month" | "day"
+  const [bankTrendRange, setBankTrendRange] = useState("month");
+  const [bankHistoryTab, setBankHistoryTab] = useState({ jpy: false, usd: false, thb: false });
   const [bankExclusions, setBankExclusions] = useState(() => {
     try { return JSON.parse(localStorage.getItem("okano-bank-exclusions-v1")) || {}; } catch { return {}; }
   });
@@ -745,13 +754,16 @@ export default function Dashboard() {
 
   const jpyRows = [...BANK_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualJpy.map(e => ({ name: e.name, amount: e.amount, lastUpdate: e.date, src: "MANUAL", id: e.id }))];
   const usdRows = [...USD_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualUsd.map(e => ({ name: e.name, usd: e.amount, lastUpdate: e.date, src: "MANUAL", id: e.id }))];
+  const thbRows = [...THB_ITEMS.map(it => ({ ...it, src: it.src || "AUTO" })), ...manualThb.map(e => ({ name: e.name, thb: e.amount, lastUpdate: e.date, src: "MANUAL", id: e.id }))];
   
   const excludedJpySum = jpyRows.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + (i.amount || 0), 0);
   const excludedUsdSum = usdRows.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + (i.usd || 0), 0);
+  const excludedThbSum = thbRows.filter(it => (bankExclusions || {})[it.name]).reduce((s, i) => s + (i.thb || i.amount || 0), 0);
   const excludedUsdJpySum = usdJpy ? Math.round(excludedUsdSum * usdJpy) : 0;
 
   const manualJpySum = manualJpy.reduce((s, e) => s + e.amount, 0);
   const manualUsdSum = manualUsd.reduce((s, e) => s + e.amount, 0);
+  const manualThbSum = manualThb.reduce((s, e) => s + e.amount, 0);
   const manualUsdJpySum = usdJpy ? Math.round(manualUsdSum * usdJpy) : 0;
 
   const excludedSonySum = SONY_ITEMS.filter(it => (insExclusions || {})[it.name]).reduce((s, i) => s + (i.amount || 0), 0);
@@ -759,9 +771,13 @@ export default function Dashboard() {
 
   const EFFECTIVE_JA_TOTAL = jaTotal; // JA is handled via `archived` property directly
 
+  const EFFECTIVE_THB_SUM = THB_TOTAL + manualThbSum - excludedThbSum;
+  const EFFECTIVE_THB_JPY_SUM = thbJpy ? Math.round(EFFECTIVE_THB_SUM * thbJpy) : 0;
+
   const GRAND_TOTAL = MT_TOTAL + MF_UNIQUE + EFFECTIVE_SONY_TOTAL + IDECO_ADJ + EFFECTIVE_JA_TOTAL 
                       - excludedJpySum - excludedUsdJpySum 
-                      + manualJpySum + manualUsdJpySum;
+                      + manualJpySum + manualUsdJpySum
+                      + EFFECTIVE_THB_JPY_SUM;
                       
   const EFFECTIVE_BANK_TOTAL = BANK_TOTAL + manualJpySum - excludedJpySum;
   const EFFECTIVE_USD_SUM = USD_SUM + manualUsdSum - excludedUsdSum;
@@ -856,6 +872,47 @@ export default function Dashboard() {
       filtered = Array.from(byMonth.values());
     }
     return filtered;
+  };
+
+  const renderBankTrendSection = () => {
+    const itemData = getFilteredTrend(detailHistoryRows, bankTrendRange).map(d => {
+      let jpySum = 0, usdSum = 0, thbSum = 0;
+      if (d.bank) d.bank.forEach(s => jpySum += s.amount);
+      if (d.usd) d.usd.forEach(s => usdSum += s.usd);
+      if (d.thb) d.thb.forEach(s => thbSum += s.amount);
+      return {
+        date: d.date,
+        "銀行・現金(円)": jpySum,
+        "米ドル(USD)": usdSum,
+        "タイバーツ(THB)": thbSum
+      };
+    });
+
+    return (
+      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px", marginBottom: 16, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>総計推移（JPY / USD / THB）</div>
+          <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
+            <button onClick={() => setBankTrendRange("year")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: bankTrendRange==="year" ? C.acc : "transparent", color: bankTrendRange==="year" ? "#fff" : C.muted, fontWeight: 600 }}>年次</button>
+            <button onClick={() => setBankTrendRange("month")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: bankTrendRange==="month" ? C.acc : "transparent", color: bankTrendRange==="month" ? "#fff" : C.muted, fontWeight: 600 }}>月次</button>
+            <button onClick={() => setBankTrendRange("day")} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: bankTrendRange==="day" ? C.acc : "transparent", color: bankTrendRange==="day" ? "#fff" : C.muted, fontWeight: 600 }}>日次</button>
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={itemData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.line} vertical={false} />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.muted }} tickMargin={8} tickLine={false} axisLine={false} />
+            <YAxis yAxisId="left" stroke={C.muted} fontSize={10} tickFormatter={v => Math.round(v/10000)+"万"} width={40} tickLine={false} axisLine={false} />
+            <YAxis yAxisId="right" orientation="right" stroke={C.muted} fontSize={10} tickFormatter={v => Math.round(v)} width={40} tickLine={false} axisLine={false} />
+            <Tooltip formatter={(v, name) => [name.includes("USD") ? `$${Number(v).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : name.includes("THB") ? `฿${Number(v).toLocaleString("en-US")}` : fmt(v), name]} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line yAxisId="left" type="monotone" dataKey="銀行・現金(円)" stroke="#0284c7" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+            <Line yAxisId="right" type="monotone" dataKey="米ドル(USD)" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+            <Line yAxisId="right" type="monotone" dataKey="タイバーツ(THB)" stroke="#f59e0b" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
   };
 
   const filteredTrendData = getFilteredTrend(trendData, trendRange);
@@ -1541,13 +1598,28 @@ export default function Dashboard() {
           });
         };
 
+        const getBankHistory = (currency) => {
+          return [...detailHistoryRows].reverse().map(d => {
+            let sum = 0;
+            if (currency === "JPY" && d.bank) d.bank.forEach(s => sum += s.amount);
+            if (currency === "USD" && d.usd) d.usd.forEach(s => sum += s.usd);
+            if (currency === "THB" && d.thb) d.thb.forEach(s => sum += s.amount);
+            return { date: d.date, amount: sum, src: "AUTO" };
+          }).filter(d => d.amount > 0);
+        };
+
         return (
         <div>
+          {renderBankTrendSection()}
           {/* ── 銀行・現金資産（円） ── */}
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.line}`, padding: "14px", marginBottom: 16, boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>銀行・現金資産</div>
               <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
+                  <button onClick={() => setBankHistoryTab(p => ({ ...p, jpy: false }))} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: !bankHistoryTab.jpy ? C.acc : "transparent", color: !bankHistoryTab.jpy ? "#fff" : C.muted, fontWeight: 600 }}>現在</button>
+                  <button onClick={() => setBankHistoryTab(p => ({ ...p, jpy: true }))} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: bankHistoryTab.jpy ? C.acc : "transparent", color: bankHistoryTab.jpy ? "#fff" : C.muted, fontWeight: 600 }}>履歴</button>
+                </div>
                 <button onClick={() => setShowArchivedJpy(v => !v)} style={{ background: showArchivedJpy ? C.amber + "22" : "transparent", border: `1px solid ${C.amber}`, color: C.amber, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                   {showArchivedJpy ? "非表示を隠す" : "除外を表示"}
                 </button>
@@ -1559,6 +1631,7 @@ export default function Dashboard() {
             {manualFormOpen === "JPY" && (
               <ManualCashForm currency="JPY" unitLabel="残高（円）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
             )}
+            {!bankHistoryTab.jpy ? (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
                 <thead>
@@ -1616,6 +1689,31 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
+            ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "left" }}>日付</th>
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "right" }}>総残高</th>
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "center" }}>取得元</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getBankHistory("JPY").map((it, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
+                      <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.date}</td>
+                      <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmt(it.amount)}</td>
+                      <td style={{ padding: "8px", textAlign: "center" }}><Tag src={it.src}/></td>
+                    </tr>
+                  ))}
+                  {getBankHistory("JPY").length === 0 && (
+                    <tr><td colSpan={3} style={{ padding: "16px 8px", textAlign: "center", color: C.muted, fontSize: 12 }}>履歴データがありません</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            )}
           </div>
 
           {/* ── 米ドル資産 ── */}
@@ -1630,6 +1728,10 @@ export default function Dashboard() {
                     ? <span style={{ color: C.green, fontWeight: 700 }}>1 USD = ¥{usdJpy.toFixed(2)}</span>
                     : <span style={{ color: C.amber }}>レート取得失敗</span>}
                 </div>
+                <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
+                  <button onClick={() => setBankHistoryTab(p => ({ ...p, usd: false }))} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: !bankHistoryTab.usd ? C.acc : "transparent", color: !bankHistoryTab.usd ? "#fff" : C.muted, fontWeight: 600 }}>現在</button>
+                  <button onClick={() => setBankHistoryTab(p => ({ ...p, usd: true }))} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: bankHistoryTab.usd ? C.acc : "transparent", color: bankHistoryTab.usd ? "#fff" : C.muted, fontWeight: 600 }}>履歴</button>
+                </div>
                 <button onClick={() => setShowArchivedUsd(v => !v)} style={{ background: showArchivedUsd ? C.amber + "22" : "transparent", border: `1px solid ${C.amber}`, color: C.amber, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                   {showArchivedUsd ? "非表示を隠す" : "除外を表示"}
                 </button>
@@ -1641,6 +1743,7 @@ export default function Dashboard() {
             {manualFormOpen === "USD" && (
               <ManualCashForm currency="USD" unitLabel="残高（USD）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
             )}
+            {!bankHistoryTab.usd ? (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8, minWidth: "560px" }}>
               <thead>
@@ -1709,6 +1812,31 @@ export default function Dashboard() {
               </tbody>
             </table>
             </div>
+            ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "left" }}>日付</th>
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "right" }}>総残高 (USD)</th>
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "center" }}>取得元</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getBankHistory("USD").map((it, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
+                      <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.date}</td>
+                      <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>${Number(it.amount).toLocaleString("en-US", { minimumFractionDigits:2 })}</td>
+                      <td style={{ padding: "8px", textAlign: "center" }}><Tag src={it.src}/></td>
+                    </tr>
+                  ))}
+                  {getBankHistory("USD").length === 0 && (
+                    <tr><td colSpan={3} style={{ padding: "16px 8px", textAlign: "center", color: C.muted, fontSize: 12 }}>履歴データがありません</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            )}
           </div>
 
           {/* ── タイバーツ資産 ── */}
@@ -1721,6 +1849,10 @@ export default function Dashboard() {
                     ? <span style={{ color: thbIsFallback ? C.amber : C.green, fontWeight: 700 }}>1 THB = ¥{thbJpy.toFixed(3)}{thbIsFallback ? "（仮）" : ""}</span>
                     : <span style={{ color: C.muted }}>レート取得中…</span>}
                 </div>
+                <div style={{ display: "flex", background: isDark ? "#1e2d45" : "#f1f5f9", borderRadius: 8, padding: 2, gap: 2 }}>
+                  <button onClick={() => setBankHistoryTab(p => ({ ...p, thb: false }))} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: !bankHistoryTab.thb ? C.acc : "transparent", color: !bankHistoryTab.thb ? "#fff" : C.muted, fontWeight: 600 }}>現在</button>
+                  <button onClick={() => setBankHistoryTab(p => ({ ...p, thb: true }))} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, border: "none", cursor: "pointer", background: bankHistoryTab.thb ? C.acc : "transparent", color: bankHistoryTab.thb ? "#fff" : C.muted, fontWeight: 600 }}>履歴</button>
+                </div>
                 <button onClick={() => setShowArchivedThb(v => !v)} style={{ background: showArchivedThb ? C.amber + "22" : "transparent", border: `1px solid ${C.amber}`, color: C.amber, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                   {showArchivedThb ? "非表示を隠す" : "除外を表示"}
                 </button>
@@ -1732,6 +1864,7 @@ export default function Dashboard() {
             {manualFormOpen === "THB" && (
               <ManualCashForm currency="THB" unitLabel="残高（THB）" onSubmit={addManualCash} onCancel={() => setManualFormOpen(null)} />
             )}
+            {!bankHistoryTab.thb ? (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8, minWidth: "560px" }}>
               <thead>
@@ -1801,7 +1934,32 @@ export default function Dashboard() {
               </tbody>
             </table>
             </div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 10 }}>※ SCB（タイ）はAPI/スクレイピング非対応のため手入力管理。総合資産（GRAND_TOTAL）には現状未加算です</div>
+            ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "left" }}>日付</th>
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "right" }}>総残高 (THB)</th>
+                    <th style={{ padding: "10px 8px", color: C.muted, fontWeight: 600, fontSize: 12, borderBottom: `2px solid ${C.line}`, textAlign: "center" }}>取得元</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getBankHistory("THB").map((it, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${C.line}` }}>
+                      <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>{it.date}</td>
+                      <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>฿{Number(it.amount).toLocaleString("en-US")}</td>
+                      <td style={{ padding: "8px", textAlign: "center" }}><Tag src={it.src}/></td>
+                    </tr>
+                  ))}
+                  {getBankHistory("THB").length === 0 && (
+                    <tr><td colSpan={3} style={{ padding: "16px 8px", textAlign: "center", color: C.muted, fontSize: 12 }}>履歴データがありません</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            )}
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 10 }}>※ SCB（タイ）等はAPI非対応のため一部テキストファイルから解析。総合資産（GRAND_TOTAL）には合算済です</div>
           </div>
         </div>
         );
