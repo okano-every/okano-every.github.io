@@ -1,6 +1,6 @@
 {
   "dataDate": "2026/07/03",
-  "generatedAt": "2026-07-03T02:40:38.801730",
+  "generatedAt": "2026-07-03T02:52:08.373468",
   "rfItems": [
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
@@ -388,7 +388,7 @@
   "thbItems": [
     {
       "name": "SCB（本人）",
-      "amount": -266633.1,
+      "amount": 211564.16,
       "owner": "本人",
       "lastUpdate": "2026/06",
       "src": "AUTO"
