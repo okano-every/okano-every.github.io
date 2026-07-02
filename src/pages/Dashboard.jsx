@@ -1585,7 +1585,10 @@ export default function Dashboard() {
         const sortedUsdRows = applySort(usdData, "bank_usd", ["lastUpdate"]);
         const usdRowsTotalLocal = sortedUsdRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.usd || 0), 0);
 
-        const thbData = manualThb.map(e => ({ name: e.name, thb: e.amount, lastUpdate: e.date, src: "MANUAL", id: e.id }));
+        const thbData = [
+          ...THB_ITEMS.map(a => ({ name: a.name, thb: a.amount, lastUpdate: a.lastUpdate, src: a.src })),
+          ...manualThb.map(e => ({ name: e.name, thb: e.amount, lastUpdate: e.date, src: "MANUAL", id: e.id }))
+        ];
         const sortedThbRows = applySort(thbData, "bank_thb", ["lastUpdate"]);
         const thbRowsTotalLocal = sortedThbRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.thb || 0), 0);
 
