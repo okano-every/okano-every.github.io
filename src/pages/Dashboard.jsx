@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { CHANGELOG_DATA } from "./Changelog";
 import { syncData, savePat, loadPat, saveGistId, loadGistId, touchLocalTs } from "../syncService";
@@ -1618,6 +1618,7 @@ export default function Dashboard() {
                 {sortedUsdRows.map((it, i) => {
                   const isEx = (bankExclusions || {})[it.name];
                   if (isEx && !showArchivedUsd) return null;
+                  return (
                   <React.Fragment key={i}>
                     <tr style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
                       <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
@@ -1654,6 +1655,7 @@ export default function Dashboard() {
                       </tr>
                     )}
                   </React.Fragment>
+                  );
                 })}
                 <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
                   <td style={{ padding: "10px 8px" }}>合計</td>
@@ -1707,6 +1709,7 @@ export default function Dashboard() {
                 {sortedThbRows.map((it, i) => {
                   const isEx = (bankExclusions || {})[it.name];
                   if (isEx && !showArchivedThb) return null;
+                  return (
                   <React.Fragment key={i}>
                     <tr style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
                       <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
@@ -1743,6 +1746,7 @@ export default function Dashboard() {
                       </tr>
                     )}
                   </React.Fragment>
+                  );
                 })}
                 {sortedThbRows.filter(r => !(bankExclusions || {})[r.name] || showArchivedThb).length === 0 && (
                   <tr><td colSpan={6} style={{ padding: "16px 8px", textAlign: "center", color: C.muted, fontSize: 12 }}>「+ 現金手入力」から登録してください</td></tr>
