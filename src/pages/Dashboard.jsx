@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { CHANGELOG_DATA } from "./Changelog";
 import { syncData, savePat, loadPat, saveGistId, loadGistId, touchLocalTs } from "../syncService";
