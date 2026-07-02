@@ -1,202 +1,202 @@
 {
-  "dataDate": "2026/07/01",
-  "generatedAt": "2026-07-01T20:03:27.613839",
+  "dataDate": "2026/07/02",
+  "generatedAt": "2026-07-02T20:19:49.673526",
   "rfItems": [
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
       "sub": "特定",
-      "amount": 218036,
-      "pnl": 8036,
+      "amount": 223697,
+      "pnl": 13697,
       "owner": "本人",
       "acc": "SBI",
       "costPrice": 42102.0,
       "qty": 49879,
-      "price": 43713.0,
+      "price": 44848.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
       "sub": "NISA",
-      "amount": 112045,
-      "pnl": 12045,
+      "amount": 114954,
+      "pnl": 14954,
       "owner": "本人",
       "acc": "SBI",
       "costPrice": 39014.0,
       "qty": 25632,
-      "price": 43713.0,
+      "price": 44848.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｎｅｏ 宇宙開発",
       "sub": "特定",
-      "amount": 2750,
-      "pnl": 250,
+      "amount": 2958,
+      "pnl": 458,
       "owner": "本人",
       "acc": "SBI",
       "costPrice": 51653.0,
       "qty": 484,
-      "price": 56819.0,
+      "price": 61123.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 全世界株式",
       "sub": "特定",
-      "amount": 690086,
-      "pnl": 30085,
+      "amount": 705266,
+      "pnl": 45265,
       "owner": "本人",
       "acc": "SBI",
       "costPrice": 35913.0,
       "qty": 183778,
-      "price": 37550.0,
+      "price": 38376.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 全世界株式",
       "sub": "NISA",
-      "amount": 3685742,
-      "pnl": 853703,
+      "amount": 3766818,
+      "pnl": 934779,
       "owner": "本人",
       "acc": "SBI",
       "costPrice": 28852.55,
       "qty": 981556,
-      "price": 37550.0,
+      "price": 38376.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ｉＳ米国債七十",
       "sub": "NISA",
-      "amount": 2050920,
-      "pnl": 50640,
+      "amount": 2035095,
+      "pnl": 34815,
       "owner": "本人",
       "acc": "SBI",
       "costPrice": 316.0,
       "qty": 6330,
-      "price": 324.0,
+      "price": 321.5,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ｉＳ米国債三七ヘジ",
       "sub": "特定",
-      "amount": 2011170,
-      "pnl": -26230,
+      "amount": 2002325,
+      "pnl": -35075,
       "owner": "本人",
       "acc": "SBI",
       "costPrice": 668.0,
       "qty": 3050,
-      "price": 659.4,
+      "price": 656.5,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ニッセイ−＜購入・換金手数料なし＞ニッセイＮＡＳＤＡＱ１００インデックスファンド",
       "sub": "特定",
-      "amount": 32843,
-      "pnl": 2843,
+      "amount": 34354,
+      "pnl": 4354,
       "owner": "本人",
       "acc": "SBI",
       "costPrice": 25655.0,
       "qty": 11694,
-      "price": 28086.0,
+      "price": 29378.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ＳＢＩ−ＳＢＩ・Ｖ・米国高配当株式インデックス・ファンド",
       "sub": "NISA",
-      "amount": 1573352,
-      "pnl": 363676,
+      "amount": 1580830,
+      "pnl": 371154,
       "owner": "本人",
       "acc": "SBI",
       "costPrice": 19249.0,
       "qty": 628436,
-      "price": 25036.0,
+      "price": 25155.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
       "sub": "NISA",
-      "amount": 169291,
-      "pnl": 9291,
+      "amount": 173687,
+      "pnl": 13687,
       "owner": "妻",
       "acc": "SBI",
       "costPrice": 41314.0,
       "qty": 38728,
-      "price": 43713.0,
+      "price": 44848.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 全世界株式",
       "sub": "NISA",
-      "amount": 235663,
-      "pnl": 15658,
+      "amount": 240847,
+      "pnl": 20842,
       "owner": "妻",
       "acc": "SBI",
       "costPrice": 35055.0,
       "qty": 62760,
-      "price": 37550.0,
+      "price": 38376.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ニッセイ−＜購入・換金手数料なし＞ニッセイＮＡＳＤＡＱ１００インデックスファンド",
       "sub": "NISA",
-      "amount": 164199,
-      "pnl": 14195,
+      "amount": 171752,
+      "pnl": 21748,
       "owner": "妻",
       "acc": "SBI",
       "costPrice": 25658.0,
       "qty": 58463,
-      "price": 28086.0,
+      "price": 29378.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "日本株配当オープン",
       "sub": "NISA",
-      "amount": 731,
-      "pnl": 65,
+      "amount": 736,
+      "pnl": 70,
       "owner": "妻",
       "acc": "SBI",
       "costPrice": 15708.0,
       "qty": 424,
-      "price": 17251.0,
+      "price": 17375.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "ＳＢＩ−ＳＢＩ・Ｖ・米国高配当株式インデックス・ファンド",
       "sub": "NISA",
-      "amount": 161695,
-      "pnl": 29328,
+      "amount": 162468,
+      "pnl": 30101,
       "owner": "妻",
       "acc": "SBI",
       "costPrice": 12511.0,
       "qty": 105801,
-      "price": 15283.0,
+      "price": 15356.0,
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "06/30 18:00"
+      "lastUpdate": "07/02 17:00"
     },
     {
       "name": "日本株配当オープン",
@@ -289,35 +289,35 @@
       "amount": 2233419,
       "src": "MT",
       "owner": "本人",
-      "lastUpdate": "2026/06/30"
+      "lastUpdate": "2026/07/01"
     },
     {
       "name": "SMBC（妻）",
       "amount": 837749,
       "src": "MT",
       "owner": "妻",
-      "lastUpdate": "2026/06/30"
+      "lastUpdate": "2026/07/01"
     },
     {
       "name": "SMBC（長女）",
       "amount": 10074,
       "src": "MT",
       "owner": "長女",
-      "lastUpdate": "2026/06/30"
+      "lastUpdate": "2026/07/01"
     },
     {
       "name": "SMBC（次女）",
       "amount": 10074,
       "src": "MT",
       "owner": "次女",
-      "lastUpdate": "2026/06/30"
+      "lastUpdate": "2026/07/01"
     },
     {
       "name": "SMBC（長男）",
       "amount": 10166,
       "src": "MT",
       "owner": "長男",
-      "lastUpdate": "2026/06/30"
+      "lastUpdate": "2026/07/01"
     },
     {
       "name": "UFJ（本人）",
@@ -353,86 +353,86 @@
       "name": "米ドル建債券（本人/特定）",
       "usd": 14816.34,
       "owner": "本人",
-      "lastUpdate": "2026/06/30",
+      "lastUpdate": "2026/07/01",
       "src": "MT"
     },
     {
       "name": "米ドルMMF（本人/特定）",
       "usd": 7007.25,
       "owner": "本人",
-      "lastUpdate": "2026/06/30",
+      "lastUpdate": "2026/07/01",
       "src": "MT"
     },
     {
       "name": "米ドル現金（本人）",
       "usd": 7000.0,
       "owner": "本人",
-      "lastUpdate": "2026/06/30",
+      "lastUpdate": "2026/07/01",
       "src": "MT"
     },
     {
       "name": "米ドルMMF（妻/特定）",
       "usd": 7007.25,
       "owner": "妻",
-      "lastUpdate": "2026/06/30",
+      "lastUpdate": "2026/07/01",
       "src": "MT"
     },
     {
       "name": "米ドル現金（妻）",
       "usd": 7000.0,
       "owner": "妻",
-      "lastUpdate": "2026/06/30",
+      "lastUpdate": "2026/07/01",
       "src": "MT"
     }
   ],
   "idecoItems": [
     {
       "name": "eMAXIS Slim 国内株式(TOPIX)（本人）",
-      "amount": 14462,
+      "amount": 14569,
       "cost": 11295,
-      "pnl": 3167,
+      "pnl": 3274,
       "costPrice": "-",
       "qty": "-",
       "price": "-",
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "(06/30 15:42)"
+      "lastUpdate": "(07/02 15:42)"
     },
     {
       "name": "eMAXIS Slim 全世界株式(除く日本)（本人）",
-      "amount": 110746,
+      "amount": 113261,
       "cost": 93245,
-      "pnl": 17501,
+      "pnl": 20016,
       "costPrice": "-",
       "qty": "-",
       "price": "-",
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "(06/30 15:42)"
+      "lastUpdate": "(07/02 15:42)"
     },
     {
       "name": "eMAXIS Slim 米国株式(S&P500)（本人）",
-      "amount": 1613,
+      "amount": 1654,
       "cost": 1268,
-      "pnl": 345,
+      "pnl": 386,
       "costPrice": "-",
       "qty": "-",
       "price": "-",
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "(06/30 15:42)"
+      "lastUpdate": "(07/02 15:42)"
     },
     {
       "name": "eMAXIS Slim 新興国株式インデックス（本人）",
-      "amount": 842,
+      "amount": 855,
       "cost": 561,
-      "pnl": 281,
+      "pnl": 294,
       "costPrice": "-",
       "qty": "-",
       "price": "-",
       "divYield": "-",
       "divMonth": "-",
-      "lastUpdate": "(06/30 15:42)"
+      "lastUpdate": "(07/02 15:42)"
     }
   ],
   "sonyItems": [
@@ -440,20 +440,20 @@
       "id": 1,
       "name": "契約1",
       "certNo": "3607496942",
-      "amount": 3314999,
-      "cost": 2206200
+      "amount": 3369880,
+      "cost": 2224585
     },
     {
       "id": 2,
       "name": "契約2",
       "certNo": "3826415397",
-      "amount": 1452306,
-      "cost": 1155932
+      "amount": 1479816,
+      "cost": 1168920
     }
   ],
-  "mtTotal": 27382409,
+  "mtTotal": 27398794,
   "mfUnique": 4396145,
-  "idecoAdj": 0,
+  "idecoAdj": 2676,
   "mfBankLastUpdate": "(06/27 21:24)",
-  "mfIdecoLastUpdate": "(06/30 15:42)"
+  "mfIdecoLastUpdate": "(07/02 15:42)"
 }

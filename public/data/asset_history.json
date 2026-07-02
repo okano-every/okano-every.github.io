@@ -32,5 +32,22 @@
     "bank_total": "7498193",
     "ideco_adj": "0",
     "notes": "自動取得"
+  },
+  {
+    "date": "2026-07-02",
+    "mt_total": "27398794",
+    "mf_unique": "4396145",
+    "sony_total": "4849696",
+    "grand_total": "36644635",
+    "rf_securities": "13459023",
+    "rf_pnl": "1750132",
+    "cash_smbc": "2233419",
+    "cash_sbi_hybrid": "4396145",
+    "sony_contract1": "3369880",
+    "sony_contract2": "1479816",
+    "ideco_total": "130339",
+    "bank_total": "7498193",
+    "ideco_adj": "2676",
+    "notes": "自動取得"
   }
 ]
