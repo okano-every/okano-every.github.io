@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { CHANGELOG_DATA } from "./Changelog";
 import { syncData, savePat, loadPat, saveGistId, loadGistId, touchLocalTs } from "../syncService";
@@ -443,10 +443,10 @@ function spSaveData(list) {
 // ================================================================
 // 各種定義
 // ================================================================
-const TABS   = ["summary","pnl","securities","banks","insurance","missing","settings"];
+const TABS   = ["summary","pnl","securities","banks","insurance","settings"];
 const TAB_LB = {
   summary:"📊 サマリー", pnl:"💹 投資損益", securities:"📈 証券銘柄",
-  banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金", missing:"⚠️ 未連携", settings:"⚙️ 設定"
+  banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金", settings:"⚙️ 設定"
 };
 
 
@@ -971,7 +971,7 @@ export default function Dashboard() {
             border: "none",
             borderRadius: "20px",
             color: "#fff",
-            padding: "6px 16px",        // タップ領域を少し広げて押しやすく
+            padding: "6px 16px",
             fontSize: "12px",
             fontWeight: "700",
             cursor: "pointer",
@@ -983,6 +983,45 @@ export default function Dashboard() {
           }}
         >
           {isDark ? "☀️ LIGHT" : "🌙 DARK"}
+        </button>
+        <button
+          onClick={handleSync}
+          disabled={syncLoading}
+          style={{
+            background: syncLoading ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.2)",
+            border: "1px solid rgba(255,255,255,0.3)",
+            borderRadius: "20px",
+            color: "#fff",
+            padding: "6px 14px",
+            fontSize: "12px",
+            fontWeight: "700",
+            cursor: syncLoading ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            outline: "none"
+          }}
+        >
+          {syncLoading ? "🔄 同期中…" : "🔄 手動更新"}
+        </button>
+        <button
+          onClick={() => setTab("settings")}
+          style={{
+            background: "rgba(255,255,255,0.2)",
+            border: "1px solid rgba(255,255,255,0.3)",
+            borderRadius: "20px",
+            color: "#fff",
+            padding: "6px 14px",
+            fontSize: "12px",
+            fontWeight: "700",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            outline: "none"
+          }}
+        >
+          ⚙️ 設定
         </button>
       </div>
 
@@ -2069,7 +2108,7 @@ export default function Dashboard() {
               disabled={syncLoading}
               style={{ width: "100%", background: syncLoading ? C.muted : C.acc, border: "none", color: "#fff", borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 700, cursor: syncLoading ? "not-allowed" : "pointer" }}
             >
-              {syncLoading ? "同期中…" : "手動で同期を実行"}
+              {syncLoading ? "同期中…" : "GitHub Gist設定を保存"}
             </button>
           </div>
         </div>
