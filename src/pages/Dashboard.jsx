@@ -1481,11 +1481,11 @@ export default function Dashboard() {
         const manualJpy = latestManualByName(manualCash, "JPY");
         const manualUsd = latestManualByName(manualCash, "USD");
         const manualThb = latestManualByName(manualCash, "THB");
-        const jpyData = [...BANK_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualJpy.map(e => ({ name: e.name, amount: e.amount, lastUpdate: e.date, src: "MANUAL" }))];
+        const jpyData = [...BANK_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualJpy.map(e => ({ name: e.name, amount: e.amount, lastUpdate: e.date, src: "MANUAL", id: e.id }))];
         const sortedJpyRows = applySort(jpyData, "bank_jpy", ["lastUpdate"]);
         const jpyTotalLocal = sortedJpyRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.amount || 0), 0);
 
-        const usdData = [...USD_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualUsd.map(e => ({ name: e.name, usd: e.amount, lastUpdate: e.date, src: "MANUAL" }))];
+        const usdData = [...USD_ITEMS.map(it => ({ ...it, src: it.src || "MT" })), ...manualUsd.map(e => ({ name: e.name, usd: e.amount, lastUpdate: e.date, src: "MANUAL", id: e.id }))];
         const sortedUsdRows = applySort(usdData, "bank_usd", ["lastUpdate"]);
         const usdRowsTotalLocal = sortedUsdRows.filter(r => !(bankExclusions || {})[r.name]).reduce((s, r) => s + Number(r.usd || 0), 0);
 
@@ -1559,7 +1559,7 @@ export default function Dashboard() {
                           </div>
                         </td>
                       </tr>
-                      {manualEditItem?.id === it.id && (
+                      {manualEditItem != null && manualEditItem.id === it.id && (
                         <tr>
                           <td colSpan="5" style={{ padding: 0 }}>
                             <ManualCashForm currency="JPY" unitLabel="金額（円）" onSubmit={(data) => { editManualCash(data.id, data); setManualEditItem(null); }} onCancel={() => setManualEditItem(null)} initialData={manualEditItem} />
@@ -1618,27 +1618,42 @@ export default function Dashboard() {
                 {sortedUsdRows.map((it, i) => {
                   const isEx = (bankExclusions || {})[it.name];
                   if (isEx && !showArchivedUsd) return null;
-                  return (
-                  <tr key={i} style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
-                    <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
-                      {it.name}
-                      {it.src === "MANUAL" && <ManualHistoryRow name={it.name} currency="USD" entries={manualCash} unitFmt={(v) => "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: 2 })} onDelete={deleteManualCash} />}
-                    </td>
-                    <td style={{ padding: "8px", textAlign: "right", color: C.amber, fontWeight: 700, fontFamily: "monospace" }}>
-                      ${Number(it.usd).toLocaleString("en-US", { minimumFractionDigits:2 })}
-                    </td>
-                    <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>
-                      {usdJpy ? fmt(Math.round(it.usd * usdJpy)) : "─"}
-                    </td>
-                    <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
-                    <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
-                    <td style={{ padding: "8px", textAlign: "center" }}>
-                      <button onClick={() => toggleExclusion(it.name)} style={{ background: isEx ? C.amber : "transparent", border: `1px solid ${C.amber}`, color: isEx ? "#fff" : C.amber, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>
-                        {isEx ? "除外中" : "除外"}
-                      </button>
-                    </td>
-                  </tr>
-                  );
+                  <React.Fragment key={i}>
+                    <tr style={{ borderBottom: `1px solid ${C.line}`, opacity: isEx ? 0.4 : 1 }}>
+                      <td style={{ padding: "8px", color: C.text, fontWeight: 500 }}>
+                        {it.name}
+                        {it.src === "MANUAL" && <ManualHistoryRow name={it.name} currency="USD" entries={manualCash} unitFmt={(v) => "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: 2 })} onDelete={deleteManualCash} />}
+                      </td>
+                      <td style={{ padding: "8px", textAlign: "right", color: C.amber, fontWeight: 700, fontFamily: "monospace" }}>
+                        ${Number(it.usd).toLocaleString("en-US", { minimumFractionDigits:2 })}
+                      </td>
+                      <td style={{ padding: "8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>
+                        {usdJpy ? fmt(Math.round(it.usd * usdJpy)) : "─"}
+                      </td>
+                      <td style={{ padding: "8px", color: C.muted, fontSize: 11 }}>{fmtDate(it.lastUpdate)}</td>
+                      <td style={{ padding: "8px" }}><Tag src={it.src}/></td>
+                      <td style={{ padding: "8px", textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                          <button onClick={() => toggleExclusion(it.name)} style={{ background: isEx ? C.amber : "transparent", border: `1px solid ${C.amber}`, color: isEx ? "#fff" : C.amber, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>
+                            {isEx ? "除外中" : "除外"}
+                          </button>
+                          {it.src === "MANUAL" && (
+                            <>
+                              <button onClick={() => setManualEditItem({ id: it.id, name: it.name, amount: it.usd, date: it.lastUpdate, currency: "USD" })} style={{ background: "transparent", border: `1px solid ${C.acc}`, color: C.acc, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>編集</button>
+                              <button onClick={() => deleteManualCash(it.id)} style={{ background: "transparent", border: `1px solid ${C.red}`, color: C.red, borderRadius: 6, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>削除</button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {manualEditItem != null && manualEditItem.id === it.id && (
+                      <tr>
+                        <td colSpan="6" style={{ padding: 0 }}>
+                          <ManualCashForm currency="USD" unitLabel="金額（USD）" onSubmit={(data) => { editManualCash(data.id, data); setManualEditItem(null); }} onCancel={() => setManualEditItem(null)} initialData={manualEditItem} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 })}
                 <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700, background: isDark ? "#16253b" : "#f8fafc" }}>
                   <td style={{ padding: "10px 8px" }}>合計</td>
@@ -1720,7 +1735,7 @@ export default function Dashboard() {
                         </div>
                       </td>
                     </tr>
-                    {manualEditItem?.id === it.id && (
+                    {manualEditItem != null && manualEditItem.id === it.id && (
                       <tr>
                         <td colSpan="6" style={{ padding: 0 }}>
                           <ManualCashForm currency="THB" unitLabel="金額（THB）" onSubmit={(data) => { editManualCash(data.id, data); setManualEditItem(null); }} onCancel={() => setManualEditItem(null)} initialData={manualEditItem} />
