@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { CHANGELOG_DATA } from "./Changelog";
 import { syncData, savePat, loadPat, saveGistId, loadGistId, touchLocalTs } from "../syncService";
@@ -443,10 +443,10 @@ function spSaveData(list) {
 // ================================================================
 // 各種定義
 // ================================================================
-const TABS   = ["summary","pnl","securities","banks","insurance","settings"];
+const TABS   = ["summary","pnl","securities","banks","insurance"];
 const TAB_LB = {
   summary:"📊 サマリー", pnl:"💹 投資損益", securities:"📈 証券銘柄",
-  banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金", settings:"⚙️ 設定"
+  banks:"🏦 銀行/外貨", insurance:"🛡 保険/年金"
 };
 
 
