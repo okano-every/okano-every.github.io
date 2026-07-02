@@ -1,6 +1,6 @@
 {
-  "dataDate": "2026/07/02",
-  "generatedAt": "2026-07-02T20:19:49.673526",
+  "dataDate": "2026/07/03",
+  "generatedAt": "2026-07-03T01:57:39.124637",
   "rfItems": [
     {
       "name": "ｅＭＡＸＩＳ Ｓｌｉｍ 米国株式",
@@ -383,6 +383,22 @@
       "owner": "妻",
       "lastUpdate": "2026/07/01",
       "src": "MT"
+    }
+  ],
+  "thbItems": [
+    {
+      "name": "SCB（本人）",
+      "amount": -266633.1,
+      "owner": "本人",
+      "lastUpdate": "2026/06",
+      "src": "AUTO"
+    },
+    {
+      "name": "KBank（妻）",
+      "amount": 10020.33,
+      "owner": "妻",
+      "lastUpdate": "2026/06",
+      "src": "AUTO"
     }
   ],
   "idecoItems": [
